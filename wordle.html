@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Wordle & Nags Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 15px;
+        }
+
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 20px 15px;
+            max-width: 600px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 6px;
+            text-align: center;
+            font-size: 22px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+
+        .friday-banner {
+            background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 700;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+
+        .friday-banner.active {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .day-selector {
+            flex: 1;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .reset-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+            width: 100%;
+            touch-action: manipulation;
+        }
+
+        .reset-btn:active {
+            background: #dc2626;
+            transform: scale(0.98);
+        }
+
+        .save-indicator {
+            text-align: center;
+            color: #10b981;
+            font-size: 11px;
+            margin-bottom: 12px;
+            min-height: 16px;
+            font-weight: 600;
+        }
+
+        .sync-status {
+            text-align: center;
+            color: #3b82f6;
+            font-size: 10px;
+            margin-bottom: 8px;
+            min-height: 14px;
+            font-weight: 600;
+        }
+
+        .person-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            transition: transform 0.2s;
+        }
+
+        .person-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .person-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .person-daily-total {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .person-daily-total.friday-bonus {
+            background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-size: 11px;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        input[type="number"], input[type="text"] {
+            padding: 10px 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+        }
+
+        input[type="number"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .decimal-display {
+            font-size: 10px;
+            color: #667eea;
+            margin-top: 3px;
+            min-height: 14px;
+            font-weight: 600;
+        }
+
+        .totals-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .totals-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .total-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .total-name {
+            font-size: 15px;
+        }
+
+        .total-value {
+            font-size: 18px;
+        }
+
+        .help-text {
+            font-size: 10px;
+            color: #999;
+            text-align: center;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        .racing-results-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .racing-results-btn {
+            display: block;
+            width: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            text-decoration: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            touch-action: manipulation;
+        }
+
+        .racing-results-btn:active {
+            transform: scale(0.98);
+        }
+
+        @media (min-width: 600px) {
+            body {
+                padding: 20px;
+                align-items: center;
+            }
+
+            .container {
+                padding: 40px;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            .subtitle {
+                font-size: 14px;
+            }
+
+            .controls {
+                flex-direction: row;
+                gap: 10px;
+            }
+
+            .reset-btn {
+                width: auto;
+                align-self: flex-end;
+            }
+
+            .person-card {
+                padding: 18px;
+            }
+
+            .input-row {
+                gap: 12px;
+            }
+
+            input[type="number"], input[type="text"] {
+                padding: 12px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .container {
+                padding: 15px 12px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .person-name {
+                font-size: 15px;
+            }
+
+            .person-daily-total {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+
+            .input-row {
+                gap: 6px;
+            }
+
+            input[type="number"], input[type="text"] {
+                padding: 9px 6px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="confetti-canvas"></canvas>
+
+    <div class="container">
+        <h1>📊 Wordle & Nags Tracker</h1>
+        <p class="subtitle">Track daily scores and view running totals</p>
+
+        <div class="sync-status" id="syncStatus">🔄 Connecting...</div>
+
+        <div class="friday-banner" id="fridayBanner">
+            🎉 FRIDAY BONUS! All points doubled! 🎉
+        </div>
+
+        <div class="controls">
+            <div class="day-selector">
+                <label for="daySelect">Select Day of Week</label>
+                <select id="daySelect" onchange="loadDayData()">
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                </select>
+            </div>
+            <button class="reset-btn" onclick="resetData()">Reset All Data</button>
+        </div>
+
+        <div class="save-indicator" id="saveIndicator"></div>
+
+        <div id="inputSection">
+            <div class="person-card">
+                <div class="person-header">
+                    <div class="person-name">Carl</div>
+                    <div class="person-daily-total" id="carl-daily">0.00</div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Wordle</label>
+                        <input type="number" id="carl-wordle" step="1" min="0" inputmode="numeric" oninput="handleWordleInput('carl')">
+                    </div>
+                    <div class="input-group">
+                        <label>Nags (e.g., 1 1/2 or 1.5)</label>
+                        <input type="text" id="carl-nags" oninput="updateNagsDecimal('carl')">
+                        <div class="decimal-display" id="carl-nags-decimal"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="person-card">
+                <div class="person-header">
+                    <div class="person-name">Mat</div>
+                    <div class="person-daily-total" id="mat-daily">0.00</div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Wordle</label>
+                        <input type="number" id="mat-wordle" step="1" min="0" inputmode="numeric" oninput="handleWordleInput('mat')">
+                    </div>
+                    <div class="input-group">
+                        <label>Nags (e.g., 1 1/2 or 1.5)</label>
+                        <input type="text" id="mat-nags" oninput="updateNagsDecimal('mat')">
+                        <div class="decimal-display" id="mat-nags-decimal"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="person-card">
+                <div class="person-header">
+                    <div class="person-name">Phill</div>
+                    <div class="person-daily-total" id="phill-daily">0.00</div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Wordle</label>
+                        <input type="number" id="phill-wordle" step="1" min="0" inputmode="numeric" oninput="handleWordleInput('phill')">
+                    </div>
+                    <div class="input-group">
+                        <label>Nags (e.g., 1 1/2 or 1.5)</label>
+                        <input type="text" id="phill-nags" oninput="updateNagsDecimal('phill')">
+                        <div class="decimal-display" id="phill-nags-decimal"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="help-text">💡 Enter nags as fractions (1 1/2), decimals (1.5), or whole numbers (2)<br>🎉 Friday scores are automatically doubled!</p>
+
+        <div class="totals-section">
+            <div class="totals-title">Overall Totals</div>
+            <div class="total-card">
+                <span class="total-name">Carl</span>
+                <span class="total-value" id="carl-total">0.00</span>
+            </div>
+            <div class="total-card">
+                <span class="total-name">Mat</span>
+                <span class="total-value" id="mat-total">0.00</span>
+            </div>
+            <div class="total-card">
+                <span class="total-name">Phill</span>
+                <span class="total-value" id="phill-total">0.00</span>
+            </div>
+        </div>
+
+        <div class="racing-results-section">
+            <a href="https://www.bbc.co.uk/sport/horse-racing/uk-ireland/results" target="_blank" class="racing-results-btn">
+                🐴 View Horse Racing Results
+            </a>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <script>
+        
+        const firebaseConfig = {
+  apiKey: "AIzaSyAbOnhiomdlDyTFZfYMfteoIm8fwHKRKsk",
+  authDomain: "wordle-1affc.firebaseapp.com",
+  databaseURL: "https://wordle-1affc-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "wordle-1affc",
+  storageBucket: "wordle-1affc.firebasestorage.app",
+  messagingSenderId: "242269500720",
+  appId: "1:242269500720:web:af2adc376cd9b1b60c44f5"
+};
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const dataRef = database.ref('wordleNagsData');
+
+        // Confetti Animation
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let confettiPieces = [];
+        let animationFrame;
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        class ConfettiPiece {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height - canvas.height;
+                this.w = Math.random() * 10 + 5;
+                this.h = Math.random() * 5 + 5;
+                this.vx = Math.random() * 2 - 1;
+                this.vy = Math.random() * 3 + 2;
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = Math.random() * 5 - 2.5;
+                this.color = ['#667eea', '#764ba2', '#f59e0b', '#dc2626', '#10b981', '#3b82f6', '#ec4899'][Math.floor(Math.random() * 7)];
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.rotation += this.rotationSpeed;
+                
+                if (this.y > canvas.height) {
+                    return false;
+                }
+                return true;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation * Math.PI / 180);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+                ctx.restore();
+            }
+        }
+
+        function launchConfetti() {
+            for (let i = 0; i < 150; i++) {
+                confettiPieces.push(new ConfettiPiece());
+            }
+            
+            if (!animationFrame) {
+                animateConfetti();
+            }
+        }
+
+        function animateConfetti() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            confettiPieces = confettiPieces.filter(piece => {
+                piece.draw();
+                return piece.update();
+            });
+
+            if (confettiPieces.length > 0) {
+                animationFrame = requestAnimationFrame(animateConfetti);
+            } else {
+                animationFrame = null;
+            }
+        }
+
+        // Default data
+        const defaultData = {
+            Monday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
+            Tuesday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
+            Wednesday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
+            Thursday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
+            Friday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } }
+        };
+
+        let data = JSON.parse(JSON.stringify(defaultData));
+        let isUpdatingFromFirebase = false;
+
+        // Listen for real-time updates from Firebase
+        dataRef.on('value', (snapshot) => {
+            const firebaseData = snapshot.val();
+            if (firebaseData) {
+                isUpdatingFromFirebase = true;
+                data = firebaseData;
+                loadDayData();
+                isUpdatingFromFirebase = false;
+                updateSyncStatus('✓ Synced');
+            } else {
+                // Initialize Firebase with default data
+                dataRef.set(defaultData);
+            }
+        });
+
+        // Update sync status indicator
+        function updateSyncStatus(message) {
+            const status = document.getElementById('syncStatus');
+            status.textContent = message;
+            if (message.includes('✓')) {
+                status.style.color = '#10b981';
+                setTimeout(() => {
+                    status.textContent = '';
+                }, 2000);
+            }
+        }
+
+        // Save to Firebase
+        function saveToFirebase() {
+            if (!isUpdatingFromFirebase) {
+                dataRef.set(data).then(() => {
+                    updateSyncStatus('✓ Synced to cloud');
+                }).catch((error) => {
+                    updateSyncStatus('⚠️ Sync error');
+                    console.error('Firebase save error:', error);
+                });
+            }
+        }
+
+        function fractionToDecimal(input) {
+            if (!input || input === '' || input === '0') return 0;
+            
+            input = input.toString().trim();
+            
+            if (!isNaN(input)) {
+                return parseFloat(input);
+            }
+            
+            const wholeAndFraction = input.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+            if (wholeAndFraction) {
+                const whole = parseInt(wholeAndFraction[1]);
+                const numerator = parseInt(wholeAndFraction[2]);
+                const denominator = parseInt(wholeAndFraction[3]);
+                return whole + (numerator / denominator);
+            }
+            
+            const justFraction = input.match(/^(\d+)\/(\d+)$/);
+            if (justFraction) {
+                const numerator = parseInt(justFraction[1]);
+                const denominator = parseInt(justFraction[2]);
+                return numerator / denominator;
+            }
+            
+            return 0;
+        }
+
+        function handleWordleInput(person) {
+            const value = document.getElementById(`${person}-wordle`).value;
+            
+            if (value === '1') {
+                launchConfetti();
+            }
+            
+            calculateTotals();
+        }
+
+        function checkFridayCompletion() {
+            const day = document.getElementById('daySelect').value;
+            
+            if (day === 'Friday') {
+                const carlWordle = data.Friday.carl.wordle;
+                const matWordle = data.Friday.mat.wordle;
+                const phillWordle = data.Friday.phill.wordle;
+                
+                if (carlWordle !== '' && matWordle !== '' && phillWordle !== '') {
+                    launchConfetti();
+                }
+            }
+        }
+
+        function updateNagsDecimal(person) {
+            const input = document.getElementById(`${person}-nags`).value;
+            const decimal = fractionToDecimal(input);
+            const displayElement = document.getElementById(`${person}-nags-decimal`);
+            
+            if (input && input !== '' && input !== '0') {
+                displayElement.textContent = `= ${decimal.toFixed(2)}`;
+            } else {
+                displayElement.textContent = '';
+            }
+            
+            calculateTotals();
+        }
+
+        function showSaveIndicator() {
+            const indicator = document.getElementById('saveIndicator');
+            indicator.textContent = '✓ Saved';
+            setTimeout(() => {
+                indicator.textContent = '';
+            }, 2000);
+        }
+
+        function resetData() {
+            if (confirm('Are you sure you want to reset all data to zero? This will affect all users!')) {
+                data = JSON.parse(JSON.stringify(defaultData));
+                saveToFirebase();
+                loadDayData();
+                alert('All data has been reset to zero!');
+            }
+        }
+
+        function calculateDailyTotal(wordle, nags, day) {
+            if ((!wordle || wordle === '' || wordle === 0) && (!nags || nags === '' || nags === '0')) {
+                return 0;
+            }
+            
+            const wordleNum = parseFloat(wordle || 0);
+            const nagsDecimal = fractionToDecimal(nags);
+            
+            let wordleScore = 0;
+            if (wordleNum > 0) {
+                wordleScore = (wordleNum === 1) ? 10 : (7 - wordleNum);
+            }
+            
+            const nagsScore = (nagsDecimal === 0) ? 0 : (nagsDecimal + 1);
+            
+            let total = wordleScore + nagsScore;
+            
+            if (day === 'Friday') {
+                total = total * 2;
+            }
+            
+            return total;
+        }
+
+        function updateFridayBanner() {
+            const day = document.getElementById('daySelect').value;
+            const banner = document.getElementById('fridayBanner');
+            const dailyTotals = document.querySelectorAll('.person-daily-total');
+            
+            if (day === 'Friday') {
+                banner.classList.add('active');
+                dailyTotals.forEach(total => total.classList.add('friday-bonus'));
+            } else {
+                banner.classList.remove('active');
+                dailyTotals.forEach(total => total.classList.remove('friday-bonus'));
+            }
+        }
+
+        function loadDayData() {
+            const day = document.getElementById('daySelect').value;
+            const dayData = data[day];
+
+            updateFridayBanner();
+
+            document.getElementById('carl-wordle').value = dayData.carl.wordle || '';
+            document.getElementById('carl-nags').value = dayData.carl.nags || '';
+            updateNagsDecimal('carl');
+
+            document.getElementById('mat-wordle').value = dayData.mat.wordle || '';
+            document.getElementById('mat-nags').value = dayData.mat.nags || '';
+            updateNagsDecimal('mat');
+
+            document.getElementById('phill-wordle').value = dayData.phill.wordle || '';
+            document.getElementById('phill-nags').value = dayData.phill.nags || '';
+            updateNagsDecimal('phill');
+
+            calculateTotals();
+        }
+
+        function saveDayData() {
+            const day = document.getElementById('daySelect').value;
+
+            data[day] = {
+                carl: {
+                    wordle: document.getElementById('carl-wordle').value || '',
+                    nags: document.getElementById('carl-nags').value || ''
+                },
+                mat: {
+                    wordle: document.getElementById('mat-wordle').value || '',
+                    nags: document.getElementById('mat-nags').value || ''
+                },
+                phill: {
+                    wordle: document.getElementById('phill-wordle').value || '',
+                    nags: document.getElementById('phill-nags').value || ''
+                }
+            };
+
+            saveToFirebase();
+            checkFridayCompletion();
+        }
+
+        function calculateTotals() {
+            saveDayData();
+
+            const day = document.getElementById('daySelect').value;
+            
+            const carlDaily = calculateDailyTotal(data[day].carl.wordle, data[day].carl.nags, day);
+            const matDaily = calculateDailyTotal(data[day].mat.wordle, data[day].mat.nags, day);
+            const phillDaily = calculateDailyTotal(data[day].phill.wordle, data[day].phill.nags, day);
+            
+            document.getElementById('carl-daily').textContent = carlDaily.toFixed(2);
+            document.getElementById('mat-daily').textContent = matDaily.toFixed(2);
+            document.getElementById('phill-daily').textContent = phillDaily.toFixed(2);
+
+            let carlTotal = 0, matTotal = 0, phillTotal = 0;
+
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
+                carlTotal += calculateDailyTotal(data[d].carl.wordle, data[d].carl.nags, d);
+                matTotal += calculateDailyTotal(data[d].mat.wordle, data[d].mat.nags, d);
+                phillTotal += calculateDailyTotal(data[d].phill.wordle, data[d].phill.nags, d);
+            });
+
+            document.getElementById('carl-total').textContent = carlTotal.toFixed(2);
+            document.getElementById('mat-total').textContent = matTotal.toFixed(2);
+            document.getElementById('phill-total').textContent = phillTotal.toFixed(2);
+        }
+
+        window.onload = function() {
+            updateSyncStatus('🔄 Loading...');
+        };
+    </script>
+</body>
+</html>
