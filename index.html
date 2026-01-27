@@ -159,6 +159,15 @@
             font-weight: 600;
         }
 
+        .sync-status {
+            text-align: center;
+            color: #3b82f6;
+            font-size: 10px;
+            margin-bottom: 8px;
+            min-height: 14px;
+            font-weight: 600;
+        }
+
         .person-card {
             background: #f8f9fa;
             border-radius: 10px;
@@ -302,10 +311,6 @@
             transform: scale(0.98);
         }
 
-        .racing-results-btn:hover {
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-        }
-
         @media (min-width: 600px) {
             body {
                 padding: 20px;
@@ -383,6 +388,8 @@
     <div class="container">
         <h1>📊 Wordle & Nags Tracker</h1>
         <p class="subtitle">Track daily scores and view running totals</p>
+
+        <div class="sync-status" id="syncStatus">🔄 Connecting...</div>
 
         <div class="friday-banner" id="fridayBanner">
             🎉 FRIDAY BONUS! All points doubled! 🎉
@@ -485,14 +492,33 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
     <script>
+        const firebaseConfig = {
+  apiKey: "AIzaSyAbOnhiomdlDyTFZfYMfteoIm8fwHKRKsk",
+  authDomain: "wordle-1affc.firebaseapp.com",
+  databaseURL: "https://wordle-1affc-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "wordle-1affc",
+  storageBucket: "wordle-1affc.firebasestorage.app",
+  messagingSenderId: "242269500720",
+  appId: "1:242269500720:web:af2adc376cd9b1b60c44f5"
+};
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const dataRef = database.ref('wordleNagsData');
+
         // Confetti Animation
         const canvas = document.getElementById('confetti-canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Horse Emoji Animation
+        // Horse Emoji Animation Setup
         const horseCanvas = document.getElementById('horse-canvas');
         const horseCtx = horseCanvas.getContext('2d');
         horseCanvas.width = window.innerWidth;
@@ -502,7 +528,7 @@
         let horseEmojis = [];
         let animationFrame;
         let horseAnimationFrame;
-        let lastNagsValues = { carl: 0, mat: 0, phill: 0 }; // Track previous values to avoid duplicate triggers
+        let lastNagsValues = { carl: 0, mat: 0, phill: 0 }; // Track previous values
 
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
@@ -528,7 +554,7 @@
                 this.x += this.vx;
                 this.y += this.vy;
                 this.rotation += this.rotationSpeed;
-                
+
                 if (this.y > canvas.height) {
                     return false;
                 }
@@ -589,11 +615,10 @@
         }
 
         function launchConfetti() {
-            // Create 150 pieces of confetti
             for (let i = 0; i < 150; i++) {
                 confettiPieces.push(new ConfettiPiece());
             }
-            
+
             if (!animationFrame) {
                 animateConfetti();
             }
@@ -601,7 +626,7 @@
 
         function animateConfetti() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             confettiPieces = confettiPieces.filter(piece => {
                 piece.draw();
                 return piece.update();
@@ -641,7 +666,7 @@
             }
         }
 
-        // Default data - all zeros
+        // Default data
         const defaultData = {
             Monday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
             Tuesday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
@@ -650,21 +675,57 @@
             Friday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } }
         };
 
-        // Load data from localStorage or use default
-        let data = loadFromStorage() || JSON.parse(JSON.stringify(defaultData));
+        let data = JSON.parse(JSON.stringify(defaultData));
+        let isUpdatingFromFirebase = false;
 
-        // Convert fractional odds to decimal
+        // Listen for real-time updates from Firebase
+        dataRef.on('value', (snapshot) => {
+            const firebaseData = snapshot.val();
+            if (firebaseData) {
+                isUpdatingFromFirebase = true;
+                data = firebaseData;
+                loadDayData();
+                isUpdatingFromFirebase = false;
+                updateSyncStatus('✓ Synced');
+            } else {
+                // Initialize Firebase with default data
+                dataRef.set(defaultData);
+            }
+        });
+
+        // Update sync status indicator
+        function updateSyncStatus(message) {
+            const status = document.getElementById('syncStatus');
+            status.textContent = message;
+            if (message.includes('✓')) {
+                status.style.color = '#10b981';
+                setTimeout(() => {
+                    status.textContent = '';
+                }, 2000);
+            }
+        }
+
+        // Save to Firebase
+        function saveToFirebase() {
+            if (!isUpdatingFromFirebase) {
+                dataRef.set(data).then(() => {
+                    updateSyncStatus('✓ Synced to cloud');
+                }).catch((error) => {
+                    updateSyncStatus('⚠️ Sync error');
+                    console.error('Firebase save error:', error);
+                });
+            }
+        }
+
         function fractionToDecimal(input) {
             if (!input || input === '' || input === '0') return 0;
-            
+
             input = input.toString().trim();
-            
-            // If it's already a decimal number, return it
+
             if (!isNaN(input)) {
                 return parseFloat(input);
             }
-            
-            // Check for format like "1 1/2" (whole number + fraction)
+
             const wholeAndFraction = input.match(/^(\d+)\s+(\d+)\/(\d+)$/);
             if (wholeAndFraction) {
                 const whole = parseInt(wholeAndFraction[1]);
@@ -672,93 +733,64 @@
                 const denominator = parseInt(wholeAndFraction[3]);
                 return whole + (numerator / denominator);
             }
-            
-            // Check for format like "1/2" (just fraction)
+
             const justFraction = input.match(/^(\d+)\/(\d+)$/);
             if (justFraction) {
                 const numerator = parseInt(justFraction[1]);
                 const denominator = parseInt(justFraction[2]);
                 return numerator / denominator;
             }
-            
-            // If we can't parse it, return 0
+
             return 0;
         }
 
-        // Handle Wordle input with confetti trigger
         function handleWordleInput(person) {
             const value = document.getElementById(`${person}-wordle`).value;
-            
-            // Trigger confetti on Wordle score of 1 (which gives 10 points!)
+
             if (value === '1') {
                 launchConfetti();
             }
-            
+
             calculateTotals();
         }
 
-        // Check if Friday is complete and trigger confetti
         function checkFridayCompletion() {
             const day = document.getElementById('daySelect').value;
-            
+
             if (day === 'Friday') {
                 const carlWordle = data.Friday.carl.wordle;
                 const matWordle = data.Friday.mat.wordle;
                 const phillWordle = data.Friday.phill.wordle;
-                
-                // If all three have entered their Friday Wordle scores
+
                 if (carlWordle !== '' && matWordle !== '' && phillWordle !== '') {
                     launchConfetti();
                 }
             }
         }
 
-        // Update the decimal display for nags input
         function updateNagsDecimal(person) {
             const input = document.getElementById(`${person}-nags`).value;
             const decimal = fractionToDecimal(input);
             const displayElement = document.getElementById(`${person}-nags-decimal`);
-            
+
             if (input && input !== '' && input !== '0') {
                 displayElement.textContent = `= ${decimal.toFixed(2)}`;
             } else {
                 displayElement.textContent = '';
             }
-            
+
             // Trigger horse celebration for high odds (5.0 or more)
             // Only trigger if the value increased (to avoid re-triggering on edit)
             if (decimal >= 5.0 && decimal > lastNagsValues[person]) {
                 launchHorseCelebration();
             }
-            
+
             // Update the last value tracker
             lastNagsValues[person] = decimal;
-            
+
             calculateTotals();
         }
 
-        // Save to localStorage
-        function saveToStorage() {
-            try {
-                localStorage.setItem('wordleNagsData', JSON.stringify(data));
-                showSaveIndicator();
-            } catch (e) {
-                console.error('Error saving data:', e);
-            }
-        }
-
-        // Load from localStorage
-        function loadFromStorage() {
-            try {
-                const saved = localStorage.getItem('wordleNagsData');
-                return saved ? JSON.parse(saved) : null;
-            } catch (e) {
-                console.error('Error loading data:', e);
-                return null;
-            }
-        }
-
-        // Show save indicator
         function showSaveIndicator() {
             const indicator = document.getElementById('saveIndicator');
             indicator.textContent = '✓ Saved';
@@ -767,52 +799,45 @@
             }, 2000);
         }
 
-        // Reset to original data (all empty)
         function resetData() {
-            if (confirm('Are you sure you want to reset all data to zero?')) {
+            if (confirm('Are you sure you want to reset all data to zero? This will affect all users!')) {
                 data = JSON.parse(JSON.stringify(defaultData));
-                localStorage.removeItem('wordleNagsData');
                 lastNagsValues = { carl: 0, mat: 0, phill: 0 };
+                saveToFirebase();
                 loadDayData();
                 alert('All data has been reset to zero!');
             }
         }
 
-        // Calculate daily total for a person
         function calculateDailyTotal(wordle, nags, day) {
-            // If both are empty or 0, return 0
             if ((!wordle || wordle === '' || wordle === 0) && (!nags || nags === '' || nags === '0')) {
                 return 0;
             }
-            
+
             const wordleNum = parseFloat(wordle || 0);
             const nagsDecimal = fractionToDecimal(nags);
-            
-            // Wordle score: if empty or 0, score is 0; if wordle is 1, score is 10; otherwise (7 - wordle)
+
             let wordleScore = 0;
             if (wordleNum > 0) {
                 wordleScore = (wordleNum === 1) ? 10 : (7 - wordleNum);
             }
-            
-            // Nags score: if nags is 0 or empty, score is 0; otherwise (nags + 1)
+
             const nagsScore = (nagsDecimal === 0) ? 0 : (nagsDecimal + 1);
-            
+
             let total = wordleScore + nagsScore;
-            
-            // Friday bonus: double all points
+
             if (day === 'Friday') {
                 total = total * 2;
             }
-            
+
             return total;
         }
 
-        // Update Friday banner visibility
         function updateFridayBanner() {
             const day = document.getElementById('daySelect').value;
             const banner = document.getElementById('fridayBanner');
             const dailyTotals = document.querySelectorAll('.person-daily-total');
-            
+
             if (day === 'Friday') {
                 banner.classList.add('active');
                 dailyTotals.forEach(total => total.classList.add('friday-bonus'));
@@ -822,27 +847,22 @@
             }
         }
 
-        // Load data for selected day
         function loadDayData() {
             const day = document.getElementById('daySelect').value;
             const dayData = data[day];
 
-            // Update Friday banner
             updateFridayBanner();
 
-            // Load Carl's data
             document.getElementById('carl-wordle').value = dayData.carl.wordle || '';
             document.getElementById('carl-nags').value = dayData.carl.nags || '';
             lastNagsValues.carl = fractionToDecimal(dayData.carl.nags);
             updateNagsDecimal('carl');
 
-            // Load Mat's data
             document.getElementById('mat-wordle').value = dayData.mat.wordle || '';
             document.getElementById('mat-nags').value = dayData.mat.nags || '';
             lastNagsValues.mat = fractionToDecimal(dayData.mat.nags);
             updateNagsDecimal('mat');
 
-            // Load Phill's data
             document.getElementById('phill-wordle').value = dayData.phill.wordle || '';
             document.getElementById('phill-nags').value = dayData.phill.nags || '';
             lastNagsValues.phill = fractionToDecimal(dayData.phill.nags);
@@ -851,7 +871,6 @@
             calculateTotals();
         }
 
-        // Save current day data
         function saveDayData() {
             const day = document.getElementById('daySelect').value;
 
@@ -870,26 +889,23 @@
                 }
             };
 
-            saveToStorage();
+            saveToFirebase();
             checkFridayCompletion();
         }
 
-        // Calculate all totals
         function calculateTotals() {
             saveDayData();
 
             const day = document.getElementById('daySelect').value;
-            
-            // Calculate and display daily totals for each person
+
             const carlDaily = calculateDailyTotal(data[day].carl.wordle, data[day].carl.nags, day);
             const matDaily = calculateDailyTotal(data[day].mat.wordle, data[day].mat.nags, day);
             const phillDaily = calculateDailyTotal(data[day].phill.wordle, data[day].phill.nags, day);
-            
+
             document.getElementById('carl-daily').textContent = carlDaily.toFixed(2);
             document.getElementById('mat-daily').textContent = matDaily.toFixed(2);
             document.getElementById('phill-daily').textContent = phillDaily.toFixed(2);
 
-            // Calculate overall totals across all days
             let carlTotal = 0, matTotal = 0, phillTotal = 0;
 
             ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
@@ -903,9 +919,8 @@
             document.getElementById('phill-total').textContent = phillTotal.toFixed(2);
         }
 
-        // Initialize on page load
         window.onload = function() {
-            loadDayData();
+            updateSyncStatus('🔄 Loading...');
         };
     </script>
 </body>
