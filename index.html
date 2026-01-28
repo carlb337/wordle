@@ -1295,12 +1295,21 @@
         }
 
         function getCurrentWeekNumber() {
-            const now = new Date();
-            const start = new Date(now.getFullYear(), 0, 1);
-            const diff = now - start;
-            const oneWeek = 1000 * 60 * 60 * 24 * 7;
-            return Math.floor(diff / oneWeek) + 1;
-        }
+    const now = new Date();
+    
+    // ISO 8601 week calculation
+    const target = new Date(now.valueOf());
+    const dayNumber = (now.getDay() + 6) % 7; // Make Monday = 0
+    target.setDate(target.getDate() - dayNumber + 3); // Nearest Thursday
+    const firstThursday = target.valueOf();
+    target.setMonth(0, 1); // January 1st
+    if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+    }
+    
+    return 1 + Math.ceil((firstThursday - target) / 604800000); // 604800000 = 7 * 24 * 3600 * 1000
+}
+
 
         function changeWeek(direction) {
             currentWeek += direction;
@@ -2307,3 +2316,4 @@
     </script>
 </body>
 </html>
+
