@@ -651,81 +651,102 @@
         const database = firebase.database();
         const dataRef = database.ref('wordleNagsData');
 
-        // Sound Management
+        // Sound Management - Improved Synthesized Sounds
         let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-
-        // Create Audio Context for generating sounds
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioContext = new AudioContext();
 
-        // Play celebration sound (confetti - Wordle score of 1)
+        // Improved celebration sound - party horn effect
         function playCelebrationSound() {
             if (!soundEnabled) return;
             
+            // Resume audio context (required on some browsers)
+            audioContext.resume();
+            
             const now = audioContext.currentTime;
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
             
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // Cheerful ascending notes
-            oscillator.frequency.setValueAtTime(523.25, now); // C5
-            oscillator.frequency.setValueAtTime(659.25, now + 0.1); // E5
-            oscillator.frequency.setValueAtTime(783.99, now + 0.2); // G5
-            oscillator.frequency.setValueAtTime(1046.50, now + 0.3); // C6
-            
-            gainNode.gain.setValueAtTime(0.3, now);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-            
-            oscillator.start(now);
-            oscillator.stop(now + 0.5);
+            // Create multiple oscillators for richer sound - ascending melody
+            [0, 0.08, 0.16, 0.24].forEach((delay, i) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                // Party horn melody: C5, E5, G5, C6
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                osc.frequency.setValueAtTime(notes[i], now + delay);
+                osc.type = 'sine';
+                
+                gain.gain.setValueAtTime(0, now + delay);
+                gain.gain.linearRampToValueAtTime(0.3, now + delay + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.3);
+                
+                osc.start(now + delay);
+                osc.stop(now + delay + 0.3);
+            });
         }
 
-        // Play horse gallop sound (high nags odds)
+        // Improved horse gallop sound - rhythmic galloping with trumpet fanfare
         function playHorseSound() {
             if (!soundEnabled) return;
             
+            audioContext.resume();
+            
             const now = audioContext.currentTime;
             
-            // Create galloping rhythm with multiple sounds
-            for (let i = 0; i < 4; i++) {
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
+            // Galloping rhythm (4 beats) - sounds like hoofbeats
+            [0, 0.12, 0.24, 0.36].forEach((delay) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
                 
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
                 
-                oscillator.type = 'square';
-                oscillator.frequency.setValueAtTime(100 + i * 20, now + i * 0.15);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(80, now + delay);
+                osc.frequency.exponentialRampToValueAtTime(40, now + delay + 0.05);
                 
-                gainNode.gain.setValueAtTime(0.2, now + i * 0.15);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.1);
+                gain.gain.setValueAtTime(0.3, now + delay);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.05);
                 
-                oscillator.start(now + i * 0.15);
-                oscillator.stop(now + i * 0.15 + 0.1);
-            }
+                osc.start(now + delay);
+                osc.stop(now + delay + 0.05);
+            });
             
-            // Winner trumpet at the end
+            // Victory trumpet fanfare (plays after gallop)
             setTimeout(() => {
                 const trumpet = audioContext.createOscillator();
                 const trumpetGain = audioContext.createGain();
+                const now = audioContext.currentTime;
                 
                 trumpet.connect(trumpetGain);
                 trumpetGain.connect(audioContext.destination);
                 
-                trumpet.frequency.setValueAtTime(587.33, audioContext.currentTime); // D5
-                trumpet.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.15); // G5
+                trumpet.type = 'sawtooth';
                 
-                trumpetGain.gain.setValueAtTime(0.25, audioContext.currentTime);
-                trumpetGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                // Trumpet fanfare melody: G4 -> C5 -> E5 -> G5
+                const melody = [
+                    { freq: 392, time: 0, duration: 0.15 },      // G4
+                    { freq: 523.25, time: 0.15, duration: 0.15 }, // C5
+                    { freq: 659.25, time: 0.3, duration: 0.25 },  // E5
+                    { freq: 783.99, time: 0.55, duration: 0.4 }   // G5
+                ];
                 
-                trumpet.start(audioContext.currentTime);
-                trumpet.stop(audioContext.currentTime + 0.4);
-            }, 600);
+                melody.forEach(note => {
+                    trumpet.frequency.setValueAtTime(note.freq, now + note.time);
+                });
+                
+                trumpetGain.gain.setValueAtTime(0, now);
+                trumpetGain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+                trumpetGain.gain.setValueAtTime(0.25, now + 0.8);
+                trumpetGain.gain.exponentialRampToValueAtTime(0.01, now + 1);
+                
+                trumpet.start(now);
+                trumpet.stop(now + 1);
+            }, 500);
         }
 
-        // Toggle sound on/off
         function toggleSound() {
             soundEnabled = !soundEnabled;
             localStorage.setItem('soundEnabled', soundEnabled);
@@ -736,12 +757,13 @@
                 button.classList.remove('muted');
                 
                 // Play test sound
+                audioContext.resume();
                 const osc = audioContext.createOscillator();
                 const gain = audioContext.createGain();
                 osc.connect(gain);
                 gain.connect(audioContext.destination);
-                osc.frequency.value = 440;
-                gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+                osc.frequency.value = 800;
+                gain.gain.setValueAtTime(0.2, audioContext.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
                 osc.start(audioContext.currentTime);
                 osc.stop(audioContext.currentTime + 0.2);
@@ -751,7 +773,6 @@
             }
         }
 
-        // Initialize sound button state
         window.addEventListener('load', () => {
             const button = document.getElementById('soundToggle');
             if (!soundEnabled) {
@@ -1223,5 +1244,3 @@
     </script>
 </body>
 </html>
-
-
