@@ -45,6 +45,16 @@
             z-index: 9998;
         }
 
+        #money-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9997;
+        }
+
         .sound-toggle {
             position: fixed;
             bottom: 20px;
@@ -77,6 +87,75 @@
 
         .sound-toggle.muted {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .victory-banner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+            color: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            z-index: 10001;
+            opacity: 0;
+            transition: all 0.5s ease;
+            border: 5px solid #fff;
+        }
+
+        .victory-banner.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        .victory-banner h2 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .victory-banner .winner-name {
+            font-size: 72px;
+            font-weight: 900;
+            margin: 20px 0;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+            animation: glow 2s infinite;
+        }
+
+        .victory-banner .winner-score {
+            font-size: 36px;
+            margin-top: 10px;
+            opacity: 0.95;
+        }
+
+        .victory-banner .close-btn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: white;
+            color: #d97706;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .victory-banner .close-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .victory-banner .close-btn:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes glow {
+            0%, 100% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.5); }
+            50% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 255, 255, 0.8); }
         }
 
         .container {
@@ -182,6 +261,44 @@
         .reset-btn:active {
             background: #dc2626;
             transform: scale(0.98);
+        }
+
+        .finish-btn {
+            display: block;
+            width: 100%;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: white;
+            border: none;
+            padding: 18px 20px;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: 700;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            touch-action: manipulation;
+            margin-top: 20px;
+        }
+
+        .finish-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.5);
+        }
+
+        .finish-btn:active {
+            transform: scale(0.98);
+        }
+
+        .finish-section {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .finish-section.active {
+            display: block;
         }
 
         .save-indicator {
@@ -459,6 +576,14 @@
                 grid-template-columns: 140px 1fr;
                 gap: 12px;
             }
+
+            .victory-banner h2 {
+                font-size: 56px;
+            }
+
+            .victory-banner .winner-name {
+                font-size: 96px;
+            }
         }
 
         @media (max-width: 380px) {
@@ -500,14 +625,44 @@
                 height: 45px;
                 font-size: 20px;
             }
+
+            .victory-banner {
+                padding: 30px 20px;
+                width: 90%;
+            }
+
+            .victory-banner h2 {
+                font-size: 32px;
+            }
+
+            .victory-banner .winner-name {
+                font-size: 48px;
+            }
+
+            .victory-banner .winner-score {
+                font-size: 24px;
+            }
+
+            .finish-btn {
+                font-size: 18px;
+                padding: 15px 20px;
+            }
         }
     </style>
 </head>
 <body>
     <canvas id="confetti-canvas"></canvas>
     <canvas id="horse-canvas"></canvas>
+    <canvas id="money-canvas"></canvas>
 
     <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+
+    <div class="victory-banner" id="victoryBanner">
+        <h2>🏆 WINNER! 🏆</h2>
+        <div class="winner-name" id="winnerName">Carl</div>
+        <div class="winner-score" id="winnerScore">Score: 100.00</div>
+        <button class="close-btn" onclick="closeVictoryBanner()">Close</button>
+    </div>
 
     <div class="container">
         <h1>📊 Wordle & Nags Tracker</h1>
@@ -626,6 +781,12 @@
             </div>
         </div>
 
+        <div class="finish-section" id="finishSection">
+            <button class="finish-btn" onclick="finishWeek()">
+                🏁 FINISH - Declare Winner! 🏁
+            </button>
+        </div>
+
         <div class="racing-results-section">
             <a href="https://www.bbc.co.uk/sport/horse-racing/uk-ireland/results" target="_blank" class="racing-results-btn">
                 🐴 View Horse Racing Results
@@ -651,21 +812,17 @@
         const database = firebase.database();
         const dataRef = database.ref('wordleNagsData');
 
-        // Sound Management - Improved Synthesized Sounds
+        // Sound Management
         let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioContext = new AudioContext();
 
-        // Improved celebration sound - party horn effect
         function playCelebrationSound() {
             if (!soundEnabled) return;
-            
-            // Resume audio context (required on some browsers)
             audioContext.resume();
             
             const now = audioContext.currentTime;
             
-            // Create multiple oscillators for richer sound - ascending melody
             [0, 0.08, 0.16, 0.24].forEach((delay, i) => {
                 const osc = audioContext.createOscillator();
                 const gain = audioContext.createGain();
@@ -673,7 +830,6 @@
                 osc.connect(gain);
                 gain.connect(audioContext.destination);
                 
-                // Party horn melody: C5, E5, G5, C6
                 const notes = [523.25, 659.25, 783.99, 1046.50];
                 osc.frequency.setValueAtTime(notes[i], now + delay);
                 osc.type = 'sine';
@@ -687,15 +843,12 @@
             });
         }
 
-        // Improved horse gallop sound - rhythmic galloping with trumpet fanfare
         function playHorseSound() {
             if (!soundEnabled) return;
-            
             audioContext.resume();
             
             const now = audioContext.currentTime;
             
-            // Galloping rhythm (4 beats) - sounds like hoofbeats
             [0, 0.12, 0.24, 0.36].forEach((delay) => {
                 const osc = audioContext.createOscillator();
                 const gain = audioContext.createGain();
@@ -714,7 +867,6 @@
                 osc.stop(now + delay + 0.05);
             });
             
-            // Victory trumpet fanfare (plays after gallop)
             setTimeout(() => {
                 const trumpet = audioContext.createOscillator();
                 const trumpetGain = audioContext.createGain();
@@ -725,12 +877,11 @@
                 
                 trumpet.type = 'sawtooth';
                 
-                // Trumpet fanfare melody: G4 -> C5 -> E5 -> G5
                 const melody = [
-                    { freq: 392, time: 0, duration: 0.15 },      // G4
-                    { freq: 523.25, time: 0.15, duration: 0.15 }, // C5
-                    { freq: 659.25, time: 0.3, duration: 0.25 },  // E5
-                    { freq: 783.99, time: 0.55, duration: 0.4 }   // G5
+                    { freq: 392, time: 0, duration: 0.15 },
+                    { freq: 523.25, time: 0.15, duration: 0.15 },
+                    { freq: 659.25, time: 0.3, duration: 0.25 },
+                    { freq: 783.99, time: 0.55, duration: 0.4 }
                 ];
                 
                 melody.forEach(note => {
@@ -747,6 +898,61 @@
             }, 500);
         }
 
+        // Victory fanfare sound - epic trumpet melody
+        function playVictorySound() {
+            if (!soundEnabled) return;
+            audioContext.resume();
+            
+            const now = audioContext.currentTime;
+            
+            // Epic fanfare progression
+            const fanfare = [
+                { freq: 523.25, time: 0, duration: 0.2 },     // C5
+                { freq: 659.25, time: 0.2, duration: 0.2 },   // E5
+                { freq: 783.99, time: 0.4, duration: 0.3 },   // G5
+                { freq: 1046.50, time: 0.7, duration: 0.5 },  // C6
+                { freq: 783.99, time: 1.2, duration: 0.2 },   // G5
+                { freq: 1046.50, time: 1.4, duration: 0.6 }   // C6 (hold)
+            ];
+            
+            fanfare.forEach(note => {
+                // Main trumpet
+                const osc1 = audioContext.createOscillator();
+                const gain1 = audioContext.createGain();
+                
+                osc1.connect(gain1);
+                gain1.connect(audioContext.destination);
+                
+                osc1.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(note.freq, now + note.time);
+                
+                gain1.gain.setValueAtTime(0, now + note.time);
+                gain1.gain.linearRampToValueAtTime(0.3, now + note.time + 0.02);
+                gain1.gain.setValueAtTime(0.3, now + note.time + note.duration - 0.1);
+                gain1.gain.exponentialRampToValueAtTime(0.01, now + note.time + note.duration);
+                
+                osc1.start(now + note.time);
+                osc1.stop(now + note.time + note.duration);
+                
+                // Harmony (third above)
+                const osc2 = audioContext.createOscillator();
+                const gain2 = audioContext.createGain();
+                
+                osc2.connect(gain2);
+                gain2.connect(audioContext.destination);
+                
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(note.freq * 1.25, now + note.time);
+                
+                gain2.gain.setValueAtTime(0, now + note.time);
+                gain2.gain.linearRampToValueAtTime(0.15, now + note.time + 0.02);
+                gain2.gain.exponentialRampToValueAtTime(0.01, now + note.time + note.duration);
+                
+                osc2.start(now + note.time);
+                osc2.stop(now + note.time + note.duration);
+            });
+        }
+
         function toggleSound() {
             soundEnabled = !soundEnabled;
             localStorage.setItem('soundEnabled', soundEnabled);
@@ -756,7 +962,6 @@
                 button.textContent = '🔊';
                 button.classList.remove('muted');
                 
-                // Play test sound
                 audioContext.resume();
                 const osc = audioContext.createOscillator();
                 const gain = audioContext.createGain();
@@ -791,10 +996,17 @@
         horseCanvas.width = window.innerWidth;
         horseCanvas.height = window.innerHeight;
 
+        const moneyCanvas = document.getElementById('money-canvas');
+        const moneyCtx = moneyCanvas.getContext('2d');
+        moneyCanvas.width = window.innerWidth;
+        moneyCanvas.height = window.innerHeight;
+
         let confettiPieces = [];
         let horseEmojis = [];
+        let moneyEmojis = [];
         let animationFrame;
         let horseAnimationFrame;
+        let moneyAnimationFrame;
         let lastNagsValues = { carl: 0, mat: 0, phill: 0 };
 
         window.addEventListener('resize', () => {
@@ -802,6 +1014,8 @@
             canvas.height = window.innerHeight;
             horseCanvas.width = window.innerWidth;
             horseCanvas.height = window.innerHeight;
+            moneyCanvas.width = window.innerWidth;
+            moneyCanvas.height = window.innerHeight;
         });
 
         class ConfettiPiece {
@@ -879,6 +1093,48 @@
             }
         }
 
+        // Money Bag Emoji Class for Victory
+        class MoneyEmoji {
+            constructor() {
+                this.x = Math.random() * moneyCanvas.width;
+                this.y = Math.random() * moneyCanvas.height - moneyCanvas.height;
+                this.vx = Math.random() * 4 - 2;
+                this.vy = Math.random() * 5 + 2;
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = Math.random() * 10 - 5;
+                this.size = Math.random() * 40 + 40;
+                this.emoji = ['💰', '💵', '💴', '💶', '💷', '🤑', '💎', '🏆', '👑'][Math.floor(Math.random() * 9)];
+                this.opacity = 1;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.rotation += this.rotationSpeed;
+                
+                if (this.y > moneyCanvas.height * 0.7) {
+                    this.opacity -= 0.015;
+                }
+                
+                if (this.y > moneyCanvas.height || this.opacity <= 0) {
+                    return false;
+                }
+                return true;
+            }
+
+            draw() {
+                moneyCtx.save();
+                moneyCtx.translate(this.x, this.y);
+                moneyCtx.rotate(this.rotation * Math.PI / 180);
+                moneyCtx.globalAlpha = this.opacity;
+                moneyCtx.font = `${this.size}px Arial`;
+                moneyCtx.textAlign = 'center';
+                moneyCtx.textBaseline = 'middle';
+                moneyCtx.fillText(this.emoji, 0, 0);
+                moneyCtx.restore();
+            }
+        }
+
         function launchConfetti() {
             playCelebrationSound();
             
@@ -930,6 +1186,94 @@
                 horseAnimationFrame = requestAnimationFrame(animateHorses);
             } else {
                 horseAnimationFrame = null;
+            }
+        }
+
+        // Launch money celebration for victory
+        function launchMoneyCelebration() {
+            for (let i = 0; i < 100; i++) {
+                moneyEmojis.push(new MoneyEmoji());
+            }
+            
+            if (!moneyAnimationFrame) {
+                animateMoney();
+            }
+        }
+
+        function animateMoney() {
+            moneyCtx.clearRect(0, 0, moneyCanvas.width, moneyCanvas.height);
+            
+            moneyEmojis = moneyEmojis.filter(emoji => {
+                emoji.draw();
+                return emoji.update();
+            });
+
+            if (moneyEmojis.length > 0) {
+                moneyAnimationFrame = requestAnimationFrame(animateMoney);
+            } else {
+                moneyAnimationFrame = null;
+            }
+        }
+
+        // Finish Week and Declare Winner
+        function finishWeek() {
+            // Calculate totals
+            let carlTotal = 0, matTotal = 0, phillTotal = 0;
+
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
+                carlTotal += calculateDailyTotal(data[d].carl.wordle, data[d].carl.nags, d);
+                matTotal += calculateDailyTotal(data[d].mat.wordle, data[d].mat.nags, d);
+                phillTotal += calculateDailyTotal(data[d].phill.wordle, data[d].phill.nags, d);
+            });
+
+            // Determine winner
+            const scores = [
+                { name: 'Carl', score: carlTotal },
+                { name: 'Mat', score: matTotal },
+                { name: 'Phill', score: phillTotal }
+            ];
+
+            scores.sort((a, b) => b.score - a.score);
+            const winner = scores[0];
+
+            // Check for tie
+            const isTie = scores[0].score === scores[1].score;
+
+            // Display victory banner
+            const banner = document.getElementById('victoryBanner');
+            const winnerName = document.getElementById('winnerName');
+            const winnerScore = document.getElementById('winnerScore');
+
+            if (isTie) {
+                winnerName.textContent = 'TIE!';
+                winnerScore.textContent = `${winner.score.toFixed(2)} points each!`;
+            } else {
+                winnerName.textContent = winner.name;
+                winnerScore.textContent = `Score: ${winner.score.toFixed(2)} points`;
+            }
+
+            banner.classList.add('show');
+
+            // Launch celebrations
+            playVictorySound();
+            launchConfetti();
+            launchMoneyCelebration();
+        }
+
+        function closeVictoryBanner() {
+            const banner = document.getElementById('victoryBanner');
+            banner.classList.remove('show');
+        }
+
+        // Update Finish button visibility
+        function updateFinishButton() {
+            const day = document.getElementById('daySelect').value;
+            const finishSection = document.getElementById('finishSection');
+            
+            if (day === 'Friday') {
+                finishSection.classList.add('active');
+            } else {
+                finishSection.classList.remove('active');
             }
         }
 
@@ -1151,6 +1495,7 @@
 
             updateFridayBanner();
             updateWednesdaySection();
+            updateFinishButton();
 
             document.getElementById('carl-wordle').value = dayData.carl.wordle || '';
             document.getElementById('carl-nags').value = dayData.carl.nags || '';
