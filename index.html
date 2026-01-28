@@ -45,6 +45,40 @@
             z-index: 9998;
         }
 
+        .sound-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .sound-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .sound-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .sound-toggle.muted {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
         .container {
             background: white;
             border-radius: 16px;
@@ -168,7 +202,6 @@
             font-weight: 600;
         }
 
-        /* Wednesday Section Styles */
         .wednesday-section {
             display: none;
             background: #fef3c7;
@@ -459,12 +492,22 @@
                 grid-template-columns: 100px 1fr;
                 gap: 6px;
             }
+
+            .sound-toggle {
+                bottom: 15px;
+                right: 15px;
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
         }
     </style>
 </head>
 <body>
     <canvas id="confetti-canvas"></canvas>
     <canvas id="horse-canvas"></canvas>
+
+    <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
 
     <div class="container">
         <h1>📊 Wordle & Nags Tracker</h1>
@@ -490,7 +533,6 @@
             <button class="reset-btn" onclick="resetData()">Reset All Data</button>
         </div>
 
-        <!-- Wednesday Special Section -->
         <div class="wednesday-section" id="wednesdaySection">
             <div class="wednesday-title">📅 Wednesday Details</div>
             
@@ -591,12 +633,11 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
     <script>
-       const firebaseConfig = {
+        const firebaseConfig = {
   apiKey: "AIzaSyAbOnhiomdlDyTFZfYMfteoIm8fwHKRKsk",
   authDomain: "wordle-1affc.firebaseapp.com",
   databaseURL: "https://wordle-1affc-default-rtdb.europe-west1.firebasedatabase.app",
@@ -606,18 +647,124 @@
   appId: "1:242269500720:web:af2adc376cd9b1b60c44f5"
 };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const dataRef = database.ref('wordleNagsData');
 
-        // Confetti Animation
+        // Sound Management
+        let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+
+        // Create Audio Context for generating sounds
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioContext = new AudioContext();
+
+        // Play celebration sound (confetti - Wordle score of 1)
+        function playCelebrationSound() {
+            if (!soundEnabled) return;
+            
+            const now = audioContext.currentTime;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Cheerful ascending notes
+            oscillator.frequency.setValueAtTime(523.25, now); // C5
+            oscillator.frequency.setValueAtTime(659.25, now + 0.1); // E5
+            oscillator.frequency.setValueAtTime(783.99, now + 0.2); // G5
+            oscillator.frequency.setValueAtTime(1046.50, now + 0.3); // C6
+            
+            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+            
+            oscillator.start(now);
+            oscillator.stop(now + 0.5);
+        }
+
+        // Play horse gallop sound (high nags odds)
+        function playHorseSound() {
+            if (!soundEnabled) return;
+            
+            const now = audioContext.currentTime;
+            
+            // Create galloping rhythm with multiple sounds
+            for (let i = 0; i < 4; i++) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(100 + i * 20, now + i * 0.15);
+                
+                gainNode.gain.setValueAtTime(0.2, now + i * 0.15);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.1);
+                
+                oscillator.start(now + i * 0.15);
+                oscillator.stop(now + i * 0.15 + 0.1);
+            }
+            
+            // Winner trumpet at the end
+            setTimeout(() => {
+                const trumpet = audioContext.createOscillator();
+                const trumpetGain = audioContext.createGain();
+                
+                trumpet.connect(trumpetGain);
+                trumpetGain.connect(audioContext.destination);
+                
+                trumpet.frequency.setValueAtTime(587.33, audioContext.currentTime); // D5
+                trumpet.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.15); // G5
+                
+                trumpetGain.gain.setValueAtTime(0.25, audioContext.currentTime);
+                trumpetGain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                
+                trumpet.start(audioContext.currentTime);
+                trumpet.stop(audioContext.currentTime + 0.4);
+            }, 600);
+        }
+
+        // Toggle sound on/off
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('soundEnabled', soundEnabled);
+            
+            const button = document.getElementById('soundToggle');
+            if (soundEnabled) {
+                button.textContent = '🔊';
+                button.classList.remove('muted');
+                
+                // Play test sound
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.frequency.value = 440;
+                gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.2);
+            } else {
+                button.textContent = '🔇';
+                button.classList.add('muted');
+            }
+        }
+
+        // Initialize sound button state
+        window.addEventListener('load', () => {
+            const button = document.getElementById('soundToggle');
+            if (!soundEnabled) {
+                button.textContent = '🔇';
+                button.classList.add('muted');
+            }
+        });
+
         const canvas = document.getElementById('confetti-canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        // Horse Emoji Animation Setup
         const horseCanvas = document.getElementById('horse-canvas');
         const horseCtx = horseCanvas.getContext('2d');
         horseCanvas.width = window.innerWidth;
@@ -627,7 +774,7 @@
         let horseEmojis = [];
         let animationFrame;
         let horseAnimationFrame;
-        let lastNagsValues = { carl: 0, mat: 0, phill: 0 }; // Track previous values
+        let lastNagsValues = { carl: 0, mat: 0, phill: 0 };
 
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
@@ -670,7 +817,6 @@
             }
         }
 
-        // Horse Emoji Animation Class
         class HorseEmoji {
             constructor() {
                 this.x = Math.random() * horseCanvas.width;
@@ -679,7 +825,7 @@
                 this.vy = Math.random() * 4 + 2;
                 this.rotation = Math.random() * 360;
                 this.rotationSpeed = Math.random() * 8 - 4;
-                this.size = Math.random() * 30 + 30; // 30-60px
+                this.size = Math.random() * 30 + 30;
                 this.emoji = ['🐴', '🐎', '🏇', '🏆', '🥇', '🌟', '💰', '🎯'][Math.floor(Math.random() * 8)];
                 this.opacity = 1;
             }
@@ -689,7 +835,6 @@
                 this.y += this.vy;
                 this.rotation += this.rotationSpeed;
                 
-                // Fade out near bottom
                 if (this.y > horseCanvas.height * 0.8) {
                     this.opacity -= 0.02;
                 }
@@ -714,6 +859,8 @@
         }
 
         function launchConfetti() {
+            playCelebrationSound();
+            
             for (let i = 0; i < 150; i++) {
                 confettiPieces.push(new ConfettiPiece());
             }
@@ -738,9 +885,9 @@
             }
         }
 
-        // Launch Horse Celebration
         function launchHorseCelebration() {
-            // Create 80 horse emojis
+            playHorseSound();
+            
             for (let i = 0; i < 80; i++) {
                 horseEmojis.push(new HorseEmoji());
             }
@@ -765,7 +912,6 @@
             }
         }
 
-        // Default data
         const defaultData = {
             Monday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
             Tuesday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
@@ -784,7 +930,6 @@
         let data = JSON.parse(JSON.stringify(defaultData));
         let isUpdatingFromFirebase = false;
 
-        // Listen for real-time updates from Firebase
         dataRef.on('value', (snapshot) => {
             const firebaseData = snapshot.val();
             if (firebaseData) {
@@ -794,12 +939,10 @@
                 isUpdatingFromFirebase = false;
                 updateSyncStatus('✓ Synced');
             } else {
-                // Initialize Firebase with default data
                 dataRef.set(defaultData);
             }
         });
 
-        // Update sync status indicator
         function updateSyncStatus(message) {
             const status = document.getElementById('syncStatus');
             status.textContent = message;
@@ -811,7 +954,6 @@
             }
         }
 
-        // Save to Firebase
         function saveToFirebase() {
             if (!isUpdatingFromFirebase) {
                 dataRef.set(data).then(() => {
@@ -823,7 +965,6 @@
             }
         }
 
-        // Save Wednesday-specific data
         function saveWednesdayData() {
             if (!data.Wednesday.word) data.Wednesday.word = '';
             if (!data.Wednesday.meetingTime) data.Wednesday.meetingTime = '';
@@ -836,14 +977,12 @@
             saveToFirebase();
         }
 
-        // Show/hide Wednesday section
         function updateWednesdaySection() {
             const day = document.getElementById('daySelect').value;
             const wednesdaySection = document.getElementById('wednesdaySection');
             
             if (day === 'Wednesday') {
                 wednesdaySection.classList.add('active');
-                // Load Wednesday data
                 if (data.Wednesday.word !== undefined) {
                     document.getElementById('wednesday-word').value = data.Wednesday.word || '';
                 }
@@ -920,13 +1059,10 @@
                 displayElement.textContent = '';
             }
 
-            // Trigger horse celebration for high odds (5.0 or more)
-            // Only trigger if the value increased (to avoid re-triggering on edit)
             if (decimal >= 5.0 && decimal > lastNagsValues[person]) {
                 launchHorseCelebration();
             }
 
-            // Update the last value tracker
             lastNagsValues[person] = decimal;
 
             calculateTotals();
@@ -1087,3 +1223,5 @@
     </script>
 </body>
 </html>
+
+
