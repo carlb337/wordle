@@ -168,6 +168,77 @@
             font-weight: 600;
         }
 
+        /* Wednesday Section Styles */
+        .wednesday-section {
+            display: none;
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .wednesday-section.active {
+            display: block;
+        }
+
+        .wednesday-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #92400e;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .wednesday-input-group {
+            margin-bottom: 12px;
+        }
+
+        .wednesday-input-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .wednesday-input-group label {
+            font-size: 12px;
+            color: #92400e;
+            margin-bottom: 5px;
+        }
+
+        .wednesday-input-group input[type="text"] {
+            width: 100%;
+            padding: 10px 8px;
+            border: 2px solid #f59e0b;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .wednesday-input-group input[type="text"]:focus {
+            outline: none;
+            border-color: #d97706;
+        }
+
+        .wednesday-input-group input[type="time"] {
+            padding: 10px 8px;
+            border: 2px solid #f59e0b;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+            background: white;
+        }
+
+        .wednesday-input-group input[type="time"]:focus {
+            outline: none;
+            border-color: #d97706;
+        }
+
+        .meeting-row {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 8px;
+            align-items: start;
+        }
+
         .person-card {
             background: #f8f9fa;
             border-radius: 10px;
@@ -350,6 +421,11 @@
             input[type="number"], input[type="text"] {
                 padding: 12px;
             }
+
+            .meeting-row {
+                grid-template-columns: 140px 1fr;
+                gap: 12px;
+            }
         }
 
         @media (max-width: 380px) {
@@ -377,6 +453,11 @@
             input[type="number"], input[type="text"] {
                 padding: 9px 6px;
                 font-size: 14px;
+            }
+
+            .meeting-row {
+                grid-template-columns: 100px 1fr;
+                gap: 6px;
             }
         }
     </style>
@@ -407,6 +488,24 @@
                 </select>
             </div>
             <button class="reset-btn" onclick="resetData()">Reset All Data</button>
+        </div>
+
+        <!-- Wednesday Special Section -->
+        <div class="wednesday-section" id="wednesdaySection">
+            <div class="wednesday-title">📅 Wednesday Details</div>
+            
+            <div class="wednesday-input-group">
+                <label>Today's word is:</label>
+                <input type="text" id="wednesday-word" oninput="saveWednesdayData()" placeholder="Enter the word...">
+            </div>
+
+            <div class="wednesday-input-group">
+                <label>Today's meeting is:</label>
+                <div class="meeting-row">
+                    <input type="time" id="wednesday-meeting-time" onchange="saveWednesdayData()">
+                    <input type="text" id="wednesday-meeting-details" oninput="saveWednesdayData()" placeholder="Meeting details...">
+                </div>
+            </div>
         </div>
 
         <div class="save-indicator" id="saveIndicator"></div>
@@ -497,7 +596,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
     <script>
-        const firebaseConfig = {
+       const firebaseConfig = {
   apiKey: "AIzaSyAbOnhiomdlDyTFZfYMfteoIm8fwHKRKsk",
   authDomain: "wordle-1affc.firebaseapp.com",
   databaseURL: "https://wordle-1affc-default-rtdb.europe-west1.firebasedatabase.app",
@@ -670,7 +769,14 @@
         const defaultData = {
             Monday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
             Tuesday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
-            Wednesday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
+            Wednesday: { 
+                carl: { wordle: '', nags: '' }, 
+                mat: { wordle: '', nags: '' }, 
+                phill: { wordle: '', nags: '' },
+                word: '',
+                meetingTime: '',
+                meetingDetails: ''
+            },
             Thursday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
             Friday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } }
         };
@@ -714,6 +820,41 @@
                     updateSyncStatus('⚠️ Sync error');
                     console.error('Firebase save error:', error);
                 });
+            }
+        }
+
+        // Save Wednesday-specific data
+        function saveWednesdayData() {
+            if (!data.Wednesday.word) data.Wednesday.word = '';
+            if (!data.Wednesday.meetingTime) data.Wednesday.meetingTime = '';
+            if (!data.Wednesday.meetingDetails) data.Wednesday.meetingDetails = '';
+            
+            data.Wednesday.word = document.getElementById('wednesday-word').value || '';
+            data.Wednesday.meetingTime = document.getElementById('wednesday-meeting-time').value || '';
+            data.Wednesday.meetingDetails = document.getElementById('wednesday-meeting-details').value || '';
+            
+            saveToFirebase();
+        }
+
+        // Show/hide Wednesday section
+        function updateWednesdaySection() {
+            const day = document.getElementById('daySelect').value;
+            const wednesdaySection = document.getElementById('wednesdaySection');
+            
+            if (day === 'Wednesday') {
+                wednesdaySection.classList.add('active');
+                // Load Wednesday data
+                if (data.Wednesday.word !== undefined) {
+                    document.getElementById('wednesday-word').value = data.Wednesday.word || '';
+                }
+                if (data.Wednesday.meetingTime !== undefined) {
+                    document.getElementById('wednesday-meeting-time').value = data.Wednesday.meetingTime || '';
+                }
+                if (data.Wednesday.meetingDetails !== undefined) {
+                    document.getElementById('wednesday-meeting-details').value = data.Wednesday.meetingDetails || '';
+                }
+            } else {
+                wednesdaySection.classList.remove('active');
             }
         }
 
@@ -852,6 +993,7 @@
             const dayData = data[day];
 
             updateFridayBanner();
+            updateWednesdaySection();
 
             document.getElementById('carl-wordle').value = dayData.carl.wordle || '';
             document.getElementById('carl-nags').value = dayData.carl.nags || '';
@@ -874,20 +1016,40 @@
         function saveDayData() {
             const day = document.getElementById('daySelect').value;
 
-            data[day] = {
-                carl: {
-                    wordle: document.getElementById('carl-wordle').value || '',
-                    nags: document.getElementById('carl-nags').value || ''
-                },
-                mat: {
-                    wordle: document.getElementById('mat-wordle').value || '',
-                    nags: document.getElementById('mat-nags').value || ''
-                },
-                phill: {
-                    wordle: document.getElementById('phill-wordle').value || '',
-                    nags: document.getElementById('phill-nags').value || ''
-                }
-            };
+            if (day === 'Wednesday') {
+                data[day] = {
+                    carl: {
+                        wordle: document.getElementById('carl-wordle').value || '',
+                        nags: document.getElementById('carl-nags').value || ''
+                    },
+                    mat: {
+                        wordle: document.getElementById('mat-wordle').value || '',
+                        nags: document.getElementById('mat-nags').value || ''
+                    },
+                    phill: {
+                        wordle: document.getElementById('phill-wordle').value || '',
+                        nags: document.getElementById('phill-nags').value || ''
+                    },
+                    word: data.Wednesday.word || '',
+                    meetingTime: data.Wednesday.meetingTime || '',
+                    meetingDetails: data.Wednesday.meetingDetails || ''
+                };
+            } else {
+                data[day] = {
+                    carl: {
+                        wordle: document.getElementById('carl-wordle').value || '',
+                        nags: document.getElementById('carl-nags').value || ''
+                    },
+                    mat: {
+                        wordle: document.getElementById('mat-wordle').value || '',
+                        nags: document.getElementById('mat-nags').value || ''
+                    },
+                    phill: {
+                        wordle: document.getElementById('phill-wordle').value || '',
+                        nags: document.getElementById('phill-nags').value || ''
+                    }
+                };
+            }
 
             saveToFirebase();
             checkFridayCompletion();
