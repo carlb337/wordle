@@ -175,6 +175,12 @@
             50% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 255, 255, 0.8); }
         }
 
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
         .container {
             background: var(--container-bg);
             border-radius: 16px;
@@ -942,7 +948,7 @@
                     <option value="Friday">Friday</option>
                 </select>
             </div>
-            <button class="reset-btn" onclick="resetData()">Reset All Data</button>
+            <button class="reset-btn" onclick="resetData()">🔒 Reset All Data</button>
         </div>
 
         <div class="wednesday-section" id="wednesdaySection">
@@ -1109,12 +1115,180 @@
         const database = firebase.database();
         const dataRef = database.ref('wordleNagsData');
 
+        // Password protection for reset - CHANGE THIS PASSWORD!
+        const RESET_PASSWORD = "wordle2026";
+
+        function validateResetPassword(inputPassword) {
+            return inputPassword === RESET_PASSWORD;
+        }
+
+        function resetData() {
+            const passwordPrompt = document.createElement('div');
+            passwordPrompt.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10003;
+            `;
+            
+            passwordPrompt.innerHTML = `
+                <div style="
+                    background: var(--container-bg);
+                    padding: 30px;
+                    border-radius: 16px;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                    max-width: 400px;
+                    width: 90%;
+                ">
+                    <h3 style="color: var(--text-primary); margin-bottom: 15px; text-align: center;">
+                        🔒 Reset Data
+                    </h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center; font-size: 14px;">
+                        This action will delete ALL data for ALL users. Please enter the password to continue.
+                    </p>
+                    <input 
+                        type="password" 
+                        id="resetPasswordInput" 
+                        placeholder="Enter password"
+                        style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid var(--input-border);
+                            border-radius: 8px;
+                            font-size: 15px;
+                            margin-bottom: 15px;
+                            background: var(--container-bg);
+                            color: var(--text-primary);
+                        "
+                    >
+                    <div style="display: flex; gap: 10px;">
+                        <button 
+                            onclick="closePasswordPrompt()" 
+                            style="
+                                flex: 1;
+                                padding: 12px;
+                                background: #6b7280;
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                font-size: 14px;
+                            "
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onclick="confirmReset()" 
+                            style="
+                                flex: 1;
+                                padding: 12px;
+                                background: #ef4444;
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                font-size: 14px;
+                            "
+                        >
+                            Reset All
+                        </button>
+                    </div>
+                    <p id="passwordError" style="
+                        color: #ef4444;
+                        font-size: 12px;
+                        margin-top: 10px;
+                        text-align: center;
+                        display: none;
+                    ">
+                        ❌ Incorrect password
+                    </p>
+                </div>
+            `;
+            
+            document.body.appendChild(passwordPrompt);
+            
+            setTimeout(() => {
+                document.getElementById('resetPasswordInput').focus();
+            }, 100);
+            
+            document.getElementById('resetPasswordInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    confirmReset();
+                }
+            });
+        }
+
+        function closePasswordPrompt() {
+            const prompt = document.body.querySelector('[style*="rgba(0, 0, 0, 0.8)"]');
+            if (prompt) {
+                document.body.removeChild(prompt);
+            }
+        }
+
+        function confirmReset() {
+            const inputPassword = document.getElementById('resetPasswordInput').value;
+            const errorMsg = document.getElementById('passwordError');
+            
+            if (validateResetPassword(inputPassword)) {
+                closePasswordPrompt();
+                
+                if (confirm('⚠️ FINAL WARNING: This will permanently delete ALL data for ALL weeks and ALL users. Are you absolutely sure?')) {
+                    data = { 
+                        [`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)),
+                        history: {}
+                    };
+                    lastNagsValues = { carl: 0, mat: 0, phill: 0 };
+                    saveToFirebase();
+                    loadDayData();
+                    updateHistory();
+                    
+                    const notification = document.createElement('div');
+                    notification.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: #ef4444;
+                        color: white;
+                        padding: 15px 30px;
+                        border-radius: 10px;
+                        font-weight: 600;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                        z-index: 10004;
+                    `;
+                    notification.textContent = '🗑️ All data has been reset!';
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 3000);
+                }
+            } else {
+                errorMsg.style.display = 'block';
+                document.getElementById('resetPasswordInput').value = '';
+                document.getElementById('resetPasswordInput').focus();
+                
+                const input = document.getElementById('resetPasswordInput');
+                input.style.animation = 'shake 0.3s';
+                setTimeout(() => {
+                    input.style.animation = '';
+                }, 300);
+            }
+        }
+
         // Week and theme management
         let currentWeek = getCurrentWeekNumber();
         let currentYear = new Date().getFullYear();
         let theme = localStorage.getItem('theme') || 'light';
 
-        // Initialize theme
         document.documentElement.setAttribute('data-theme', theme);
         if (theme === 'dark') {
             document.getElementById('themeToggle').textContent = '☀️';
@@ -1145,7 +1319,6 @@
         function updateWeekDisplay() {
             document.getElementById('weekInfo').textContent = `Week ${currentWeek}, ${currentYear}`;
             
-            // Disable next button if on current week
             const thisWeek = getCurrentWeekNumber();
             const thisYear = new Date().getFullYear();
             const isCurrentWeek = (currentWeek === thisWeek && currentYear === thisYear);
@@ -1163,7 +1336,6 @@
             btn.textContent = theme === 'dark' ? '☀️' : '🌙';
         }
 
-        // Sound Management
         let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioContext = new AudioContext();
@@ -1560,7 +1732,6 @@
             }
         }
 
-        // Share Results Function
         function shareResults() {
             let carlTotal = 0, matTotal = 0, phillTotal = 0;
 
@@ -1585,7 +1756,6 @@
                 shareText += `${medal} ${s.name}: ${s.score.toFixed(2)} ${s.emoji}\n`;
             });
 
-            // Copy to clipboard
             navigator.clipboard.writeText(shareText).then(() => {
                 const notification = document.getElementById('copyNotification');
                 notification.classList.add('show');
@@ -1629,7 +1799,6 @@
                 winnerName.textContent = winner.name;
                 winnerScore.textContent = `Score: ${winner.score.toFixed(2)} points`;
                 
-                // Save winner to history
                 if (!data.history) data.history = {};
                 data.history[`${currentYear}-${currentWeek}`] = {
                     winner: winner.name,
@@ -1647,7 +1816,6 @@
             launchConfetti();
             launchMoneyCelebration();
             
-            // Check and update badges
             checkBadges();
         }
 
@@ -1667,12 +1835,10 @@
             }
         }
 
-        // Badge checking system
         function checkBadges() {
             const history = data.history || {};
             const weekKeys = Object.keys(history).sort();
             
-            // Get all persons' data
             const carlHistory = [];
             const matHistory = [];
             const phillHistory = [];
@@ -1684,22 +1850,18 @@
                 if (winner === 'Phill') phillHistory.push(key);
             });
             
-            // Check "On Fire" - 3 weeks in a row
             checkOnFireBadge(carlHistory, 'carl');
             checkOnFireBadge(matHistory, 'mat');
             checkOnFireBadge(phillHistory, 'phill');
             
-            // Check "Champion" - 5+ total wins
             checkChampionBadge(carlHistory.length, 'carl');
             checkChampionBadge(matHistory.length, 'mat');
             checkChampionBadge(phillHistory.length, 'phill');
             
-            // Check week-specific badges
             checkWeekBadges();
         }
 
         function checkOnFireBadge(winHistory, person) {
-            // Check if last 3 wins are consecutive weeks
             if (winHistory.length >= 3) {
                 const last3 = winHistory.slice(-3);
                 const weeks = last3.map(k => parseInt(k.split('-')[1]));
@@ -1718,21 +1880,16 @@
         function checkWeekBadges() {
             const weekData = data[`week${currentWeek}`] || {};
             
-            // Check "Wordsmith" - 5+ Wordle scores of 1-3
             let carlWordleGood = 0, matWordleGood = 0, phillWordleGood = 0;
-            
-            // Check "High Roller" - 3+ nags wins (score > 5)
             let carlNagsWins = 0, matNagsWins = 0, phillNagsWins = 0;
             
             ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
                 const dayData = weekData[day] || defaultData[day];
                 
-                // Wordle check
                 if (dayData.carl.wordle && parseInt(dayData.carl.wordle) <= 3) carlWordleGood++;
                 if (dayData.mat.wordle && parseInt(dayData.mat.wordle) <= 3) matWordleGood++;
                 if (dayData.phill.wordle && parseInt(dayData.phill.wordle) <= 3) phillWordleGood++;
                 
-                // Nags check
                 const carlNags = fractionToDecimal(dayData.carl.nags);
                 const matNags = fractionToDecimal(dayData.mat.nags);
                 const phillNags = fractionToDecimal(dayData.phill.nags);
@@ -1751,7 +1908,6 @@
             }
         }
 
-        // Update history display
         function updateHistory() {
             const history = data.history || {};
             const historyContent = document.getElementById('historyContent');
@@ -1761,7 +1917,6 @@
                 return;
             }
             
-            // Count wins per person
             const wins = { Carl: 0, Mat: 0, Phill: 0 };
             const weekKeys = Object.keys(history).sort().reverse();
             
@@ -1777,7 +1932,6 @@
                 `;
             });
             
-            // Add overall standings
             const standings = Object.entries(wins).sort((a, b) => b[1] - a[1]);
             html += '<div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--border-color);">';
             html += '<p style="text-align: center; font-weight: 700; color: var(--text-primary); margin-bottom: 10px;">Overall Wins</p>';
@@ -1789,7 +1943,6 @@
             historyContent.innerHTML = html;
         }
 
-        // Update crown and color coding
         function updateLeaderboard() {
             let carlTotal = 0, matTotal = 0, phillTotal = 0;
 
@@ -1808,21 +1961,17 @@
 
             scores.sort((a, b) => b.total - a.total);
 
-            // Reset all cards
             ['carl', 'mat', 'phill'].forEach(name => {
                 const card = document.getElementById(`total-card-${name}`);
                 card.className = 'total-card';
-                // Remove existing crown
                 const existingCrown = card.querySelector('.crown');
                 if (existingCrown) existingCrown.remove();
             });
 
-            // Apply rankings
             scores.forEach((s, i) => {
                 const card = document.getElementById(`total-card-${s.name}`);
                 if (i === 0) {
                     card.classList.add('first-place');
-                    // Add crown
                     const crown = document.createElement('div');
                     crown.className = 'crown';
                     crown.textContent = '👑';
@@ -2006,16 +2155,6 @@
             setTimeout(() => {
                 indicator.textContent = '';
             }, 2000);
-        }
-
-        function resetData() {
-            if (confirm('Are you sure you want to reset all data? This will affect all users!')) {
-                data = { [`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)) };
-                lastNagsValues = { carl: 0, mat: 0, phill: 0 };
-                saveToFirebase();
-                loadDayData();
-                alert('All data has been reset!');
-            }
         }
 
         function calculateDailyTotal(wordle, nags, day) {
