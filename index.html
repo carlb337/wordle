@@ -7,6 +7,34 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Wordle & Nags Tracker</title>
     <style>
+        :root {
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --container-bg: #ffffff;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --text-tertiary: #999;
+            --card-bg: #f8f9fa;
+            --border-color: #e0e0e0;
+            --input-border: #e0e0e0;
+            --input-focus: #667eea;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        [data-theme="dark"] {
+            --bg-gradient-start: #1a1a2e;
+            --bg-gradient-end: #16213e;
+            --container-bg: #0f3460;
+            --text-primary: #e8e8e8;
+            --text-secondary: #b8b8b8;
+            --text-tertiary: #888;
+            --card-bg: #1a1a2e;
+            --border-color: #2a2a3e;
+            --input-border: #3a3a4e;
+            --input-focus: #667eea;
+            --shadow: rgba(0, 0, 0, 0.6);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -16,16 +44,17 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             padding: 10px;
             display: flex;
             justify-content: center;
             align-items: flex-start;
             padding-top: 15px;
+            transition: background 0.3s ease;
         }
 
-        #confetti-canvas {
+        #confetti-canvas, #horse-canvas, #money-canvas {
             position: fixed;
             top: 0;
             left: 0;
@@ -35,30 +64,19 @@
             z-index: 9999;
         }
 
-        #horse-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9998;
-        }
+        #horse-canvas { z-index: 9998; }
+        #money-canvas { z-index: 9997; }
 
-        #money-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9997;
-        }
-
-        .sound-toggle {
+        .top-controls {
             position: fixed;
             bottom: 20px;
             right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 10000;
+        }
+
+        .icon-btn {
             width: 50px;
             height: 50px;
             border-radius: 50%;
@@ -67,26 +85,29 @@
             color: white;
             font-size: 24px;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 12px var(--shadow);
             transition: transform 0.2s, box-shadow 0.2s;
-            z-index: 10000;
             display: flex;
             align-items: center;
             justify-content: center;
             touch-action: manipulation;
         }
 
-        .sound-toggle:hover {
+        .icon-btn:hover {
             transform: scale(1.05);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 6px 16px var(--shadow);
         }
 
-        .sound-toggle:active {
+        .icon-btn:active {
             transform: scale(0.95);
         }
 
-        .sound-toggle.muted {
+        .icon-btn.muted {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        [data-theme="dark"] .icon-btn {
+            background: linear-gradient(135deg, #4a5fd8 0%, #5a3f8a 100%);
         }
 
         .victory-banner {
@@ -149,37 +170,74 @@
             transform: scale(1.05);
         }
 
-        .victory-banner .close-btn:active {
-            transform: scale(0.95);
-        }
-
         @keyframes glow {
             0%, 100% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.5); }
             50% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 255, 255, 0.8); }
         }
 
         .container {
-            background: white;
+            background: var(--container-bg);
             border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px var(--shadow);
             padding: 20px 15px;
             max-width: 600px;
             width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 80px;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
         }
 
         h1 {
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 6px;
             text-align: center;
             font-size: 22px;
+            transition: color 0.3s ease;
         }
 
         .subtitle {
             text-align: center;
-            color: #666;
+            color: var(--text-secondary);
             margin-bottom: 15px;
             font-size: 12px;
+            transition: color 0.3s ease;
+        }
+
+        .week-selector {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid var(--border-color);
+        }
+
+        .week-selector button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .week-selector button:active {
+            transform: scale(0.95);
+        }
+
+        .week-selector button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .week-info {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 15px;
         }
 
         .friday-banner {
@@ -218,20 +276,22 @@
         label {
             display: block;
             margin-bottom: 6px;
-            color: #555;
+            color: var(--text-primary);
             font-weight: 600;
             font-size: 13px;
+            transition: color 0.3s ease;
         }
 
         select {
             width: 100%;
             padding: 12px 10px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--input-border);
             border-radius: 8px;
             font-size: 15px;
-            background: white;
+            background: var(--container-bg);
+            color: var(--text-primary);
             cursor: pointer;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, background 0.3s, color 0.3s;
             -webkit-appearance: none;
             appearance: none;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
@@ -239,9 +299,13 @@
             background-position: right 10px center;
         }
 
+        [data-theme="dark"] select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23e8e8e8' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        }
+
         select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--input-focus);
         }
 
         .reset-btn {
@@ -294,11 +358,58 @@
             display: none;
             margin-top: 20px;
             padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
+            border-top: 2px solid var(--border-color);
         }
 
         .finish-section.active {
             display: block;
+        }
+
+        .share-btn {
+            display: block;
+            width: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            touch-action: manipulation;
+            margin-top: 10px;
+        }
+
+        .share-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .share-btn:active {
+            transform: scale(0.98);
+        }
+
+        .copy-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #10b981;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10002;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .copy-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
         }
 
         .save-indicator {
@@ -390,11 +501,11 @@
         }
 
         .person-card {
-            background: #f8f9fa;
+            background: var(--card-bg);
             border-radius: 10px;
             padding: 12px;
             margin-bottom: 12px;
-            transition: transform 0.2s;
+            transition: transform 0.2s, background 0.3s;
         }
 
         .person-header {
@@ -407,7 +518,8 @@
         .person-name {
             font-size: 16px;
             font-weight: 700;
-            color: #333;
+            color: var(--text-primary);
+            transition: color 0.3s;
         }
 
         .person-daily-total {
@@ -437,23 +549,25 @@
         .input-group label {
             font-size: 11px;
             margin-bottom: 5px;
-            color: #666;
+            color: var(--text-secondary);
         }
 
         input[type="number"], input[type="text"] {
             padding: 10px 8px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--input-border);
             border-radius: 6px;
             font-size: 15px;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, background 0.3s, color 0.3s;
             -webkit-appearance: none;
             appearance: none;
             width: 100%;
+            background: var(--container-bg);
+            color: var(--text-primary);
         }
 
         input[type="number"]:focus, input[type="text"]:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--input-focus);
         }
 
         .decimal-display {
@@ -467,15 +581,16 @@
         .totals-section {
             margin-top: 20px;
             padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
+            border-top: 2px solid var(--border-color);
         }
 
         .totals-title {
             font-size: 16px;
             font-weight: 700;
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 12px;
             text-align: center;
+            transition: color 0.3s;
         }
 
         .total-card {
@@ -488,6 +603,36 @@
             border-radius: 8px;
             margin-bottom: 8px;
             font-weight: 600;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .total-card.first-place {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+        }
+
+        .total-card.second-place {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+        }
+
+        .total-card.third-place {
+            background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%);
+        }
+
+        .crown {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-5px); }
         }
 
         .total-name {
@@ -498,18 +643,110 @@
             font-size: 18px;
         }
 
+        .badges-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+        }
+
+        .badges-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .badges-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+        }
+
+        .badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            background: var(--container-bg);
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            transition: transform 0.2s;
+            opacity: 0.3;
+        }
+
+        .badge.earned {
+            opacity: 1;
+            border-color: #fbbf24;
+            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+        }
+
+        .badge.earned:hover {
+            transform: scale(1.05);
+        }
+
+        .badge-icon {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .badge-name {
+            font-size: 10px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .history-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+        }
+
+        .history-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: var(--container-bg);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .history-week {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .history-winner {
+            color: var(--text-secondary);
+        }
+
         .help-text {
             font-size: 10px;
-            color: #999;
+            color: var(--text-tertiary);
             text-align: center;
             margin-top: 8px;
             line-height: 1.4;
+            transition: color 0.3s;
         }
 
         .racing-results-section {
             margin-top: 20px;
             padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
+            border-top: 2px solid var(--border-color);
         }
 
         .racing-results-btn {
@@ -584,6 +821,10 @@
             .victory-banner .winner-name {
                 font-size: 96px;
             }
+
+            .badges-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
         }
 
         @media (max-width: 380px) {
@@ -618,9 +859,12 @@
                 gap: 6px;
             }
 
-            .sound-toggle {
+            .top-controls {
                 bottom: 15px;
                 right: 15px;
+            }
+
+            .icon-btn {
                 width: 45px;
                 height: 45px;
                 font-size: 20px;
@@ -655,7 +899,14 @@
     <canvas id="horse-canvas"></canvas>
     <canvas id="money-canvas"></canvas>
 
-    <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+    <div class="top-controls">
+        <button class="icon-btn" id="soundToggle" onclick="toggleSound()">🔊</button>
+        <button class="icon-btn" id="themeToggle" onclick="toggleTheme()">🌙</button>
+    </div>
+
+    <div class="copy-notification" id="copyNotification">
+        📋 Copied to clipboard!
+    </div>
 
     <div class="victory-banner" id="victoryBanner">
         <h2>🏆 WINNER! 🏆</h2>
@@ -667,6 +918,12 @@
     <div class="container">
         <h1>📊 Wordle & Nags Tracker</h1>
         <p class="subtitle">Track daily scores and view running totals</p>
+
+        <div class="week-selector">
+            <button onclick="changeWeek(-1)">← Prev</button>
+            <div class="week-info" id="weekInfo">Week 1, 2026</div>
+            <button onclick="changeWeek(1)" id="nextWeekBtn">Next →</button>
+        </div>
 
         <div class="sync-status" id="syncStatus">🔄 Connecting...</div>
 
@@ -765,17 +1022,47 @@
 
         <p class="help-text">💡 Enter nags as fractions (1 1/2), decimals (1.5), or whole numbers (2)<br>🎉 Friday scores are automatically doubled!<br>🐴 Nags odds of 5.0+ trigger a celebration!</p>
 
+        <div class="badges-section">
+            <div class="badges-title">🏅 Achievements</div>
+            <div class="badges-grid">
+                <div class="badge" id="badge-onfire" title="Win 3 weeks in a row">
+                    <div class="badge-icon">🔥</div>
+                    <div class="badge-name">On Fire</div>
+                </div>
+                <div class="badge" id="badge-perfectweek" title="Highest score every day this week">
+                    <div class="badge-icon">🎯</div>
+                    <div class="badge-name">Perfect Week</div>
+                </div>
+                <div class="badge" id="badge-highroller" title="Win on nags 3+ times in one week">
+                    <div class="badge-icon">🐎</div>
+                    <div class="badge-name">High Roller</div>
+                </div>
+                <div class="badge" id="badge-wordsmith" title="Get 5+ Wordle scores of 1-3 this week">
+                    <div class="badge-icon">📚</div>
+                    <div class="badge-name">Wordsmith</div>
+                </div>
+                <div class="badge" id="badge-champion" title="Win 5+ weeks total">
+                    <div class="badge-icon">🏆</div>
+                    <div class="badge-name">Champion</div>
+                </div>
+                <div class="badge" id="badge-comeback" title="Win week after being in last place Monday">
+                    <div class="badge-icon">⚡</div>
+                    <div class="badge-name">Comeback</div>
+                </div>
+            </div>
+        </div>
+
         <div class="totals-section">
             <div class="totals-title">Overall Totals</div>
-            <div class="total-card">
+            <div class="total-card" id="total-card-carl">
                 <span class="total-name">Carl</span>
                 <span class="total-value" id="carl-total">0.00</span>
             </div>
-            <div class="total-card">
+            <div class="total-card" id="total-card-mat">
                 <span class="total-name">Mat</span>
                 <span class="total-value" id="mat-total">0.00</span>
             </div>
-            <div class="total-card">
+            <div class="total-card" id="total-card-phill">
                 <span class="total-name">Phill</span>
                 <span class="total-value" id="phill-total">0.00</span>
             </div>
@@ -785,6 +1072,16 @@
             <button class="finish-btn" onclick="finishWeek()">
                 🏁 FINISH - Declare Winner! 🏁
             </button>
+            <button class="share-btn" onclick="shareResults()">
+                📤 Share Week Results
+            </button>
+        </div>
+
+        <div class="history-section">
+            <div class="history-title">📜 Season Standings</div>
+            <div id="historyContent">
+                <p style="text-align: center; color: var(--text-secondary); font-size: 12px;">No completed weeks yet</p>
+            </div>
         </div>
 
         <div class="racing-results-section">
@@ -811,6 +1108,60 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const dataRef = database.ref('wordleNagsData');
+
+        // Week and theme management
+        let currentWeek = getCurrentWeekNumber();
+        let currentYear = new Date().getFullYear();
+        let theme = localStorage.getItem('theme') || 'light';
+
+        // Initialize theme
+        document.documentElement.setAttribute('data-theme', theme);
+        if (theme === 'dark') {
+            document.getElementById('themeToggle').textContent = '☀️';
+        }
+
+        function getCurrentWeekNumber() {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const diff = now - start;
+            const oneWeek = 1000 * 60 * 60 * 24 * 7;
+            return Math.floor(diff / oneWeek) + 1;
+        }
+
+        function changeWeek(direction) {
+            currentWeek += direction;
+            if (currentWeek < 1) {
+                currentWeek = 52;
+                currentYear--;
+            } else if (currentWeek > 52) {
+                currentWeek = 1;
+                currentYear++;
+            }
+            
+            updateWeekDisplay();
+            loadWeekData();
+        }
+
+        function updateWeekDisplay() {
+            document.getElementById('weekInfo').textContent = `Week ${currentWeek}, ${currentYear}`;
+            
+            // Disable next button if on current week
+            const thisWeek = getCurrentWeekNumber();
+            const thisYear = new Date().getFullYear();
+            const isCurrentWeek = (currentWeek === thisWeek && currentYear === thisYear);
+            const isFutureWeek = (currentYear > thisYear) || (currentYear === thisYear && currentWeek > thisWeek);
+            
+            document.getElementById('nextWeekBtn').disabled = isCurrentWeek || isFutureWeek;
+        }
+
+        function toggleTheme() {
+            theme = theme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            
+            const btn = document.getElementById('themeToggle');
+            btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
 
         // Sound Management
         let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
@@ -898,25 +1249,22 @@
             }, 500);
         }
 
-        // Victory fanfare sound - epic trumpet melody
         function playVictorySound() {
             if (!soundEnabled) return;
             audioContext.resume();
             
             const now = audioContext.currentTime;
             
-            // Epic fanfare progression
             const fanfare = [
-                { freq: 523.25, time: 0, duration: 0.2 },     // C5
-                { freq: 659.25, time: 0.2, duration: 0.2 },   // E5
-                { freq: 783.99, time: 0.4, duration: 0.3 },   // G5
-                { freq: 1046.50, time: 0.7, duration: 0.5 },  // C6
-                { freq: 783.99, time: 1.2, duration: 0.2 },   // G5
-                { freq: 1046.50, time: 1.4, duration: 0.6 }   // C6 (hold)
+                { freq: 523.25, time: 0, duration: 0.2 },
+                { freq: 659.25, time: 0.2, duration: 0.2 },
+                { freq: 783.99, time: 0.4, duration: 0.3 },
+                { freq: 1046.50, time: 0.7, duration: 0.5 },
+                { freq: 783.99, time: 1.2, duration: 0.2 },
+                { freq: 1046.50, time: 1.4, duration: 0.6 }
             ];
             
             fanfare.forEach(note => {
-                // Main trumpet
                 const osc1 = audioContext.createOscillator();
                 const gain1 = audioContext.createGain();
                 
@@ -934,7 +1282,6 @@
                 osc1.start(now + note.time);
                 osc1.stop(now + note.time + note.duration);
                 
-                // Harmony (third above)
                 const osc2 = audioContext.createOscillator();
                 const gain2 = audioContext.createGain();
                 
@@ -1093,7 +1440,6 @@
             }
         }
 
-        // Money Bag Emoji Class for Victory
         class MoneyEmoji {
             constructor() {
                 this.x = Math.random() * moneyCanvas.width;
@@ -1189,7 +1535,6 @@
             }
         }
 
-        // Launch money celebration for victory
         function launchMoneyCelebration() {
             for (let i = 0; i < 100; i++) {
                 moneyEmojis.push(new MoneyEmoji());
@@ -1215,18 +1560,53 @@
             }
         }
 
-        // Finish Week and Declare Winner
-        function finishWeek() {
-            // Calculate totals
+        // Share Results Function
+        function shareResults() {
             let carlTotal = 0, matTotal = 0, phillTotal = 0;
 
             ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
-                carlTotal += calculateDailyTotal(data[d].carl.wordle, data[d].carl.nags, d);
-                matTotal += calculateDailyTotal(data[d].mat.wordle, data[d].mat.nags, d);
-                phillTotal += calculateDailyTotal(data[d].phill.wordle, data[d].phill.nags, d);
+                const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
+                carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
+                matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
+                phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
             });
 
-            // Determine winner
+            const scores = [
+                { name: 'Carl', score: carlTotal, emoji: '🎯' },
+                { name: 'Mat', score: matTotal, emoji: '🎲' },
+                { name: 'Phill', score: phillTotal, emoji: '🎪' }
+            ];
+
+            scores.sort((a, b) => b.score - a.score);
+
+            let shareText = `Wordle & Nags Tracker 🏆\nWeek ${currentWeek}, ${currentYear}\n\n`;
+            scores.forEach((s, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+                shareText += `${medal} ${s.name}: ${s.score.toFixed(2)} ${s.emoji}\n`;
+            });
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareText).then(() => {
+                const notification = document.getElementById('copyNotification');
+                notification.classList.add('show');
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 2000);
+            }).catch(() => {
+                alert('Results:\n\n' + shareText);
+            });
+        }
+
+        function finishWeek() {
+            let carlTotal = 0, matTotal = 0, phillTotal = 0;
+
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
+                const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
+                carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
+                matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
+                phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
+            });
+
             const scores = [
                 { name: 'Carl', score: carlTotal },
                 { name: 'Mat', score: matTotal },
@@ -1236,10 +1616,8 @@
             scores.sort((a, b) => b.score - a.score);
             const winner = scores[0];
 
-            // Check for tie
             const isTie = scores[0].score === scores[1].score;
 
-            // Display victory banner
             const banner = document.getElementById('victoryBanner');
             const winnerName = document.getElementById('winnerName');
             const winnerScore = document.getElementById('winnerScore');
@@ -1250,14 +1628,27 @@
             } else {
                 winnerName.textContent = winner.name;
                 winnerScore.textContent = `Score: ${winner.score.toFixed(2)} points`;
+                
+                // Save winner to history
+                if (!data.history) data.history = {};
+                data.history[`${currentYear}-${currentWeek}`] = {
+                    winner: winner.name,
+                    score: winner.score,
+                    year: currentYear,
+                    week: currentWeek
+                };
+                saveToFirebase();
+                updateHistory();
             }
 
             banner.classList.add('show');
 
-            // Launch celebrations
             playVictorySound();
             launchConfetti();
             launchMoneyCelebration();
+            
+            // Check and update badges
+            checkBadges();
         }
 
         function closeVictoryBanner() {
@@ -1265,7 +1656,6 @@
             banner.classList.remove('show');
         }
 
-        // Update Finish button visibility
         function updateFinishButton() {
             const day = document.getElementById('daySelect').value;
             const finishSection = document.getElementById('finishSection');
@@ -1275,6 +1665,174 @@
             } else {
                 finishSection.classList.remove('active');
             }
+        }
+
+        // Badge checking system
+        function checkBadges() {
+            const history = data.history || {};
+            const weekKeys = Object.keys(history).sort();
+            
+            // Get all persons' data
+            const carlHistory = [];
+            const matHistory = [];
+            const phillHistory = [];
+            
+            weekKeys.forEach(key => {
+                const winner = history[key].winner;
+                if (winner === 'Carl') carlHistory.push(key);
+                if (winner === 'Mat') matHistory.push(key);
+                if (winner === 'Phill') phillHistory.push(key);
+            });
+            
+            // Check "On Fire" - 3 weeks in a row
+            checkOnFireBadge(carlHistory, 'carl');
+            checkOnFireBadge(matHistory, 'mat');
+            checkOnFireBadge(phillHistory, 'phill');
+            
+            // Check "Champion" - 5+ total wins
+            checkChampionBadge(carlHistory.length, 'carl');
+            checkChampionBadge(matHistory.length, 'mat');
+            checkChampionBadge(phillHistory.length, 'phill');
+            
+            // Check week-specific badges
+            checkWeekBadges();
+        }
+
+        function checkOnFireBadge(winHistory, person) {
+            // Check if last 3 wins are consecutive weeks
+            if (winHistory.length >= 3) {
+                const last3 = winHistory.slice(-3);
+                const weeks = last3.map(k => parseInt(k.split('-')[1]));
+                if (weeks[1] === weeks[0] + 1 && weeks[2] === weeks[1] + 1) {
+                    document.getElementById('badge-onfire').classList.add('earned');
+                }
+            }
+        }
+
+        function checkChampionBadge(wins, person) {
+            if (wins >= 5) {
+                document.getElementById('badge-champion').classList.add('earned');
+            }
+        }
+
+        function checkWeekBadges() {
+            const weekData = data[`week${currentWeek}`] || {};
+            
+            // Check "Wordsmith" - 5+ Wordle scores of 1-3
+            let carlWordleGood = 0, matWordleGood = 0, phillWordleGood = 0;
+            
+            // Check "High Roller" - 3+ nags wins (score > 5)
+            let carlNagsWins = 0, matNagsWins = 0, phillNagsWins = 0;
+            
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
+                const dayData = weekData[day] || defaultData[day];
+                
+                // Wordle check
+                if (dayData.carl.wordle && parseInt(dayData.carl.wordle) <= 3) carlWordleGood++;
+                if (dayData.mat.wordle && parseInt(dayData.mat.wordle) <= 3) matWordleGood++;
+                if (dayData.phill.wordle && parseInt(dayData.phill.wordle) <= 3) phillWordleGood++;
+                
+                // Nags check
+                const carlNags = fractionToDecimal(dayData.carl.nags);
+                const matNags = fractionToDecimal(dayData.mat.nags);
+                const phillNags = fractionToDecimal(dayData.phill.nags);
+                
+                if (carlNags >= 5) carlNagsWins++;
+                if (matNags >= 5) matNagsWins++;
+                if (phillNags >= 5) phillNagsWins++;
+            });
+            
+            if (carlWordleGood >= 5 || matWordleGood >= 5 || phillWordleGood >= 5) {
+                document.getElementById('badge-wordsmith').classList.add('earned');
+            }
+            
+            if (carlNagsWins >= 3 || matNagsWins >= 3 || phillNagsWins >= 3) {
+                document.getElementById('badge-highroller').classList.add('earned');
+            }
+        }
+
+        // Update history display
+        function updateHistory() {
+            const history = data.history || {};
+            const historyContent = document.getElementById('historyContent');
+            
+            if (Object.keys(history).length === 0) {
+                historyContent.innerHTML = '<p style="text-align: center; color: var(--text-secondary); font-size: 12px;">No completed weeks yet</p>';
+                return;
+            }
+            
+            // Count wins per person
+            const wins = { Carl: 0, Mat: 0, Phill: 0 };
+            const weekKeys = Object.keys(history).sort().reverse();
+            
+            let html = '';
+            weekKeys.slice(0, 5).forEach(key => {
+                const h = history[key];
+                wins[h.winner] = (wins[h.winner] || 0) + 1;
+                html += `
+                    <div class="history-item">
+                        <span class="history-week">Week ${h.week}, ${h.year}</span>
+                        <span class="history-winner">${h.winner} - ${h.score.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+            
+            // Add overall standings
+            const standings = Object.entries(wins).sort((a, b) => b[1] - a[1]);
+            html += '<div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--border-color);">';
+            html += '<p style="text-align: center; font-weight: 700; color: var(--text-primary); margin-bottom: 10px;">Overall Wins</p>';
+            standings.forEach(([name, count]) => {
+                html += `<p style="text-align: center; color: var(--text-secondary); font-size: 13px;">${name}: ${count}</p>`;
+            });
+            html += '</div>';
+            
+            historyContent.innerHTML = html;
+        }
+
+        // Update crown and color coding
+        function updateLeaderboard() {
+            let carlTotal = 0, matTotal = 0, phillTotal = 0;
+
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
+                const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
+                carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
+                matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
+                phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
+            });
+
+            const scores = [
+                { name: 'carl', total: carlTotal },
+                { name: 'mat', total: matTotal },
+                { name: 'phill', total: phillTotal }
+            ];
+
+            scores.sort((a, b) => b.total - a.total);
+
+            // Reset all cards
+            ['carl', 'mat', 'phill'].forEach(name => {
+                const card = document.getElementById(`total-card-${name}`);
+                card.className = 'total-card';
+                // Remove existing crown
+                const existingCrown = card.querySelector('.crown');
+                if (existingCrown) existingCrown.remove();
+            });
+
+            // Apply rankings
+            scores.forEach((s, i) => {
+                const card = document.getElementById(`total-card-${s.name}`);
+                if (i === 0) {
+                    card.classList.add('first-place');
+                    // Add crown
+                    const crown = document.createElement('div');
+                    crown.className = 'crown';
+                    crown.textContent = '👑';
+                    card.appendChild(crown);
+                } else if (i === 1) {
+                    card.classList.add('second-place');
+                } else {
+                    card.classList.add('third-place');
+                }
+            });
         }
 
         const defaultData = {
@@ -1292,7 +1850,7 @@
             Friday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } }
         };
 
-        let data = JSON.parse(JSON.stringify(defaultData));
+        let data = {};
         let isUpdatingFromFirebase = false;
 
         dataRef.on('value', (snapshot) => {
@@ -1300,13 +1858,23 @@
             if (firebaseData) {
                 isUpdatingFromFirebase = true;
                 data = firebaseData;
-                loadDayData();
+                loadWeekData();
+                updateHistory();
+                checkBadges();
                 isUpdatingFromFirebase = false;
                 updateSyncStatus('✓ Synced');
             } else {
-                dataRef.set(defaultData);
+                data = { [`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)) };
+                dataRef.set(data);
             }
         });
+
+        function loadWeekData() {
+            if (!data[`week${currentWeek}`]) {
+                data[`week${currentWeek}`] = JSON.parse(JSON.stringify(defaultData));
+            }
+            loadDayData();
+        }
 
         function updateSyncStatus(message) {
             const status = document.getElementById('syncStatus');
@@ -1331,13 +1899,14 @@
         }
 
         function saveWednesdayData() {
-            if (!data.Wednesday.word) data.Wednesday.word = '';
-            if (!data.Wednesday.meetingTime) data.Wednesday.meetingTime = '';
-            if (!data.Wednesday.meetingDetails) data.Wednesday.meetingDetails = '';
+            const weekKey = `week${currentWeek}`;
+            if (!data[weekKey].Wednesday.word) data[weekKey].Wednesday.word = '';
+            if (!data[weekKey].Wednesday.meetingTime) data[weekKey].Wednesday.meetingTime = '';
+            if (!data[weekKey].Wednesday.meetingDetails) data[weekKey].Wednesday.meetingDetails = '';
             
-            data.Wednesday.word = document.getElementById('wednesday-word').value || '';
-            data.Wednesday.meetingTime = document.getElementById('wednesday-meeting-time').value || '';
-            data.Wednesday.meetingDetails = document.getElementById('wednesday-meeting-details').value || '';
+            data[weekKey].Wednesday.word = document.getElementById('wednesday-word').value || '';
+            data[weekKey].Wednesday.meetingTime = document.getElementById('wednesday-meeting-time').value || '';
+            data[weekKey].Wednesday.meetingDetails = document.getElementById('wednesday-meeting-details').value || '';
             
             saveToFirebase();
         }
@@ -1345,18 +1914,14 @@
         function updateWednesdaySection() {
             const day = document.getElementById('daySelect').value;
             const wednesdaySection = document.getElementById('wednesdaySection');
+            const weekKey = `week${currentWeek}`;
             
             if (day === 'Wednesday') {
                 wednesdaySection.classList.add('active');
-                if (data.Wednesday.word !== undefined) {
-                    document.getElementById('wednesday-word').value = data.Wednesday.word || '';
-                }
-                if (data.Wednesday.meetingTime !== undefined) {
-                    document.getElementById('wednesday-meeting-time').value = data.Wednesday.meetingTime || '';
-                }
-                if (data.Wednesday.meetingDetails !== undefined) {
-                    document.getElementById('wednesday-meeting-details').value = data.Wednesday.meetingDetails || '';
-                }
+                const wedData = data[weekKey]?.Wednesday || defaultData.Wednesday;
+                document.getElementById('wednesday-word').value = wedData.word || '';
+                document.getElementById('wednesday-meeting-time').value = wedData.meetingTime || '';
+                document.getElementById('wednesday-meeting-details').value = wedData.meetingDetails || '';
             } else {
                 wednesdaySection.classList.remove('active');
             }
@@ -1401,11 +1966,13 @@
 
         function checkFridayCompletion() {
             const day = document.getElementById('daySelect').value;
+            const weekKey = `week${currentWeek}`;
 
             if (day === 'Friday') {
-                const carlWordle = data.Friday.carl.wordle;
-                const matWordle = data.Friday.mat.wordle;
-                const phillWordle = data.Friday.phill.wordle;
+                const fridayData = data[weekKey]?.Friday || defaultData.Friday;
+                const carlWordle = fridayData.carl.wordle;
+                const matWordle = fridayData.mat.wordle;
+                const phillWordle = fridayData.phill.wordle;
 
                 if (carlWordle !== '' && matWordle !== '' && phillWordle !== '') {
                     launchConfetti();
@@ -1442,12 +2009,12 @@
         }
 
         function resetData() {
-            if (confirm('Are you sure you want to reset all data to zero? This will affect all users!')) {
-                data = JSON.parse(JSON.stringify(defaultData));
+            if (confirm('Are you sure you want to reset all data? This will affect all users!')) {
+                data = { [`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)) };
                 lastNagsValues = { carl: 0, mat: 0, phill: 0 };
                 saveToFirebase();
                 loadDayData();
-                alert('All data has been reset to zero!');
+                alert('All data has been reset!');
             }
         }
 
@@ -1491,7 +2058,8 @@
 
         function loadDayData() {
             const day = document.getElementById('daySelect').value;
-            const dayData = data[day];
+            const weekKey = `week${currentWeek}`;
+            const dayData = data[weekKey]?.[day] || defaultData[day];
 
             updateFridayBanner();
             updateWednesdaySection();
@@ -1517,9 +2085,14 @@
 
         function saveDayData() {
             const day = document.getElementById('daySelect').value;
+            const weekKey = `week${currentWeek}`;
+
+            if (!data[weekKey]) {
+                data[weekKey] = JSON.parse(JSON.stringify(defaultData));
+            }
 
             if (day === 'Wednesday') {
-                data[day] = {
+                data[weekKey][day] = {
                     carl: {
                         wordle: document.getElementById('carl-wordle').value || '',
                         nags: document.getElementById('carl-nags').value || ''
@@ -1532,12 +2105,12 @@
                         wordle: document.getElementById('phill-wordle').value || '',
                         nags: document.getElementById('phill-nags').value || ''
                     },
-                    word: data.Wednesday.word || '',
-                    meetingTime: data.Wednesday.meetingTime || '',
-                    meetingDetails: data.Wednesday.meetingDetails || ''
+                    word: data[weekKey].Wednesday?.word || '',
+                    meetingTime: data[weekKey].Wednesday?.meetingTime || '',
+                    meetingDetails: data[weekKey].Wednesday?.meetingDetails || ''
                 };
             } else {
-                data[day] = {
+                data[weekKey][day] = {
                     carl: {
                         wordle: document.getElementById('carl-wordle').value || '',
                         nags: document.getElementById('carl-nags').value || ''
@@ -1561,10 +2134,12 @@
             saveDayData();
 
             const day = document.getElementById('daySelect').value;
+            const weekKey = `week${currentWeek}`;
+            const dayData = data[weekKey]?.[day] || defaultData[day];
 
-            const carlDaily = calculateDailyTotal(data[day].carl.wordle, data[day].carl.nags, day);
-            const matDaily = calculateDailyTotal(data[day].mat.wordle, data[day].mat.nags, day);
-            const phillDaily = calculateDailyTotal(data[day].phill.wordle, data[day].phill.nags, day);
+            const carlDaily = calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, day);
+            const matDaily = calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, day);
+            const phillDaily = calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, day);
 
             document.getElementById('carl-daily').textContent = carlDaily.toFixed(2);
             document.getElementById('mat-daily').textContent = matDaily.toFixed(2);
@@ -1573,18 +2148,22 @@
             let carlTotal = 0, matTotal = 0, phillTotal = 0;
 
             ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
-                carlTotal += calculateDailyTotal(data[d].carl.wordle, data[d].carl.nags, d);
-                matTotal += calculateDailyTotal(data[d].mat.wordle, data[d].mat.nags, d);
-                phillTotal += calculateDailyTotal(data[d].phill.wordle, data[d].phill.nags, d);
+                const dData = data[weekKey]?.[d] || defaultData[d];
+                carlTotal += calculateDailyTotal(dData.carl.wordle, dData.carl.nags, d);
+                matTotal += calculateDailyTotal(dData.mat.wordle, dData.mat.nags, d);
+                phillTotal += calculateDailyTotal(dData.phill.wordle, dData.phill.nags, d);
             });
 
             document.getElementById('carl-total').textContent = carlTotal.toFixed(2);
             document.getElementById('mat-total').textContent = matTotal.toFixed(2);
             document.getElementById('phill-total').textContent = phillTotal.toFixed(2);
+
+            updateLeaderboard();
         }
 
         window.onload = function() {
             updateSyncStatus('🔄 Loading...');
+            updateWeekDisplay();
         };
     </script>
 </body>
