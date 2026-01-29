@@ -1585,9 +1585,9 @@ function shareResults() {
 let carlTotal = 0, matTotal = 0, phillTotal = 0;
 ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
 const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
-carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
-matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
-phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
+carlTotal += calculateDailyTotal(dayData.carl?.wordle, dayData.carl?.nags, d);
+matTotal += calculateDailyTotal(dayData.mat?.wordle, dayData.mat?.nags, d);
+phillTotal += calculateDailyTotal(dayData.phill?.wordle, dayData.phill?.nags, d);
 });
 const scores = [
 { name: 'Carl', score: carlTotal, emoji: '🎯' },
@@ -1615,9 +1615,9 @@ function finishWeek() {
 let carlTotal = 0, matTotal = 0, phillTotal = 0;
 ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
 const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
-carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
-matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
-phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
+carlTotal += calculateDailyTotal(dayData.carl?.wordle, dayData.carl?.nags, d);
+matTotal += calculateDailyTotal(dayData.mat?.wordle, dayData.mat?.nags, d);
+phillTotal += calculateDailyTotal(dayData.phill?.wordle, dayData.phill?.nags, d);
 });
 const scores = [
 { name: 'Carl', score: carlTotal },
@@ -1774,6 +1774,7 @@ const scores = [
 ];
 scores.sort((a, b) => b.total - a.total);
 const container = document.getElementById('totals-container');
+if (!container) return;
 container.innerHTML = '';
 scores.forEach((s, i) => {
 const card = document.createElement('div');
@@ -1903,22 +1904,48 @@ mysteryRevealed: false
 
 let data = {};
 let isUpdatingFromFirebase = false;
+let needsMysteryInit = false;
 
 dataRef.on('value', (snapshot) => {
 const firebaseData = snapshot.val();
 if (firebaseData) {
 isUpdatingFromFirebase = true;
 data = firebaseData;
-loadWeekData();
+const weekKey = `week${currentWeek}`;
+if (!data[weekKey]) {
+data[weekKey] = JSON.parse(JSON.stringify(defaultData));
+}
+if (!data[weekKey].mysteryDay || data[weekKey].mysteryDay === '') {
+needsMysteryInit = true;
+}
+loadDayData();
 updateHistory();
 checkBadges();
 isUpdatingFromFirebase = false;
 updateSyncStatus('✓ Synced');
+if (needsMysteryInit) {
+needsMysteryInit = false;
+initializeMysteryForWeek(weekKey);
+}
 } else {
 data = { [`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)) };
 dataRef.set(data);
 }
 });
+
+function initializeMysteryForWeek(weekKey) {
+if (!data[weekKey].mysteryDay || data[weekKey].mysteryDay === '') {
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+const randomDay = days[Math.floor(Math.random() * days.length)];
+const multipliers = [2, 3, 4];
+const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
+data[weekKey].mysteryDay = randomDay;
+data[weekKey].mysteryMultiplier = randomMultiplier;
+data[weekKey].mysteryRevealed = false;
+saveToFirebase();
+updateMysteryBanner();
+}
+}
 
 function loadWeekData() {
 const weekKey = `week${currentWeek}`;
@@ -1933,7 +1960,9 @@ const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.leng
 data[weekKey].mysteryDay = randomDay;
 data[weekKey].mysteryMultiplier = randomMultiplier;
 data[weekKey].mysteryRevealed = false;
+if (!isUpdatingFromFirebase) {
 saveToFirebase();
+}
 }
 if (data[weekKey].mysteryMultiplier === undefined) {
 data[weekKey].mysteryMultiplier = 0;
@@ -1971,6 +2000,9 @@ const weekKey = `week${currentWeek}`;
 const mysteryDay = data[weekKey].mysteryDay || '';
 const mysteryMultiplier = data[weekKey].mysteryMultiplier || 0;
 const mysteryRevealed = data[weekKey].mysteryRevealed || false;
+if (!data[weekKey].Wednesday) {
+data[weekKey].Wednesday = JSON.parse(JSON.stringify(defaultData.Wednesday));
+}
 if (!data[weekKey].Wednesday.word) data[weekKey].Wednesday.word = '';
 if (!data[weekKey].Wednesday.meetingTime) data[weekKey].Wednesday.meetingTime = '';
 if (!data[weekKey].Wednesday.meetingDetails) data[weekKey].Wednesday.meetingDetails = '';
@@ -2153,7 +2185,11 @@ data[weekKey] = JSON.parse(JSON.stringify(defaultData));
 const mysteryDay = data[weekKey].mysteryDay || '';
 const mysteryMultiplier = data[weekKey].mysteryMultiplier || 0;
 const mysteryRevealed = data[weekKey].mysteryRevealed || false;
+const existingHistory = data.history || {};
 if (day === 'Wednesday') {
+const existingWedWord = data[weekKey].Wednesday?.word || '';
+const existingWedTime = data[weekKey].Wednesday?.meetingTime || '';
+const existingWedDetails = data[weekKey].Wednesday?.meetingDetails || '';
 data[weekKey][day] = {
 carl: {
 wordle: document.getElementById('carl-wordle').value || '',
@@ -2170,9 +2206,9 @@ wordle: document.getElementById('phill-wordle').value || '',
 nags: document.getElementById('phill-nags').value || '',
 horseSelection: document.getElementById('phill-horse-selection').value || ''
 },
-word: data[weekKey].Wednesday?.word || '',
-meetingTime: data[weekKey].Wednesday?.meetingTime || '',
-meetingDetails: data[weekKey].Wednesday?.meetingDetails || ''
+word: existingWedWord,
+meetingTime: existingWedTime,
+meetingDetails: existingWedDetails
 };
 } else {
 data[weekKey][day] = {
@@ -2196,6 +2232,7 @@ horseSelection: document.getElementById('phill-horse-selection').value || ''
 data[weekKey].mysteryDay = mysteryDay;
 data[weekKey].mysteryMultiplier = mysteryMultiplier;
 data[weekKey].mysteryRevealed = mysteryRevealed;
+data.history = existingHistory;
 saveToFirebase();
 checkFridayCompletion();
 }
@@ -2225,8 +2262,9 @@ if (currentDayIndex < 0 || currentDayIndex > 4) {
 currentDayIndex = 0;
 }
 document.getElementById('daySelect').value = days[currentDayIndex];
-loadDayData();
 };
 </script>
+
 </body>
 </html>
+
