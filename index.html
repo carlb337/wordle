@@ -1,2319 +1,2216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Wordle & Nags Tracker</title>
-    <style>
-        :root {
-            --bg-gradient-start: #667eea;
-            --bg-gradient-end: #764ba2;
-            --container-bg: #ffffff;
-            --text-primary: #333;
-            --text-secondary: #666;
-            --text-tertiary: #999;
-            --card-bg: #f8f9fa;
-            --border-color: #e0e0e0;
-            --input-border: #e0e0e0;
-            --input-focus: #667eea;
-            --shadow: rgba(0, 0, 0, 0.3);
-        }
-
-        [data-theme="dark"] {
-            --bg-gradient-start: #1a1a2e;
-            --bg-gradient-end: #16213e;
-            --container-bg: #0f3460;
-            --text-primary: #e8e8e8;
-            --text-secondary: #b8b8b8;
-            --text-tertiary: #888;
-            --card-bg: #1a1a2e;
-            --border-color: #2a2a3e;
-            --input-border: #3a3a4e;
-            --input-focus: #667eea;
-            --shadow: rgba(0, 0, 0, 0.6);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            min-height: 100vh;
-            padding: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding-top: 15px;
-            transition: background 0.3s ease;
-        }
-
-        #confetti-canvas, #horse-canvas, #money-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9999;
-        }
-
-        #horse-canvas { z-index: 9998; }
-        #money-canvas { z-index: 9997; }
-
-        .top-controls {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-            z-index: 10000;
-        }
-
-        .icon-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px var(--shadow);
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            touch-action: manipulation;
-        }
-
-        .icon-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 16px var(--shadow);
-        }
-
-        .icon-btn:active {
-            transform: scale(0.95);
-        }
-
-        .icon-btn.muted {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        }
-
-        [data-theme="dark"] .icon-btn {
-            background: linear-gradient(135deg, #4a5fd8 0%, #5a3f8a 100%);
-        }
-
-        .victory-banner {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
-            color: white;
-            padding: 40px 60px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            text-align: center;
-            z-index: 10001;
-            opacity: 0;
-            transition: all 0.5s ease;
-            border: 5px solid #fff;
-        }
-
-        .victory-banner.show {
-            transform: translate(-50%, -50%) scale(1);
-            opacity: 1;
-        }
-
-        .victory-banner h2 {
-            font-size: 48px;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .victory-banner .winner-name {
-            font-size: 72px;
-            font-weight: 900;
-            margin: 20px 0;
-            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
-            animation: glow 2s infinite;
-        }
-
-        .victory-banner .winner-score {
-            font-size: 36px;
-            margin-top: 10px;
-            opacity: 0.95;
-        }
-
-        .victory-banner .close-btn {
-            margin-top: 30px;
-            padding: 15px 40px;
-            background: white;
-            color: #d97706;
-            border: none;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s;
-        }
-
-        .victory-banner .close-btn:hover {
-            transform: scale(1.05);
-        }
-
-        @keyframes glow {
-            0%, 100% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.5); }
-            50% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 255, 255, 0.8); }
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
-        }
-
-        .container {
-            background: var(--container-bg);
-            border-radius: 16px;
-            box-shadow: 0 20px 60px var(--shadow);
-            padding: 20px 15px;
-            max-width: 600px;
-            width: 100%;
-            margin-bottom: 80px;
-            transition: background 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        h1 {
-            color: var(--text-primary);
-            margin-bottom: 6px;
-            text-align: center;
-            font-size: 22px;
-            transition: color 0.3s ease;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: var(--text-secondary);
-            margin-bottom: 15px;
-            font-size: 12px;
-            transition: color 0.3s ease;
-        }
-
-        .week-selector {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--card-bg);
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border: 2px solid var(--border-color);
-        }
-
-        .week-selector button {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background 0.3s;
-        }
-
-        .week-selector button:active {
-            transform: scale(0.95);
-        }
-
-        .week-selector button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .week-info {
-            font-weight: 700;
-            color: var(--text-primary);
-            font-size: 15px;
-        }
-
-        .friday-banner {
-            background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 700;
-            margin-bottom: 15px;
-            font-size: 13px;
-            display: none;
-            animation: pulse 2s infinite;
-        }
-
-        .friday-banner.active {
-            display: block;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-        }
-
-        .controls {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-
-        .day-selector {
-            flex: 1;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 6px;
-            color: var(--text-primary);
-            font-weight: 600;
-            font-size: 13px;
-            transition: color 0.3s ease;
-        }
-
-        select {
-            width: 100%;
-            padding: 12px 10px;
-            border: 2px solid var(--input-border);
-            border-radius: 8px;
-            font-size: 15px;
-            background: var(--container-bg);
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: border-color 0.3s, background 0.3s, color 0.3s;
-            -webkit-appearance: none;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 10px center;
-        }
-
-        [data-theme="dark"] select {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23e8e8e8' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-        }
-
-        select:focus {
-            outline: none;
-            border-color: var(--input-focus);
-        }
-
-        .reset-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 12px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background 0.3s;
-            width: 100%;
-            touch-action: manipulation;
-        }
-
-        .reset-btn:active {
-            background: #dc2626;
-            transform: scale(0.98);
-        }
-
-        .finish-btn {
-            display: block;
-            width: 100%;
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            color: white;
-            border: none;
-            padding: 18px 20px;
-            border-radius: 10px;
-            font-size: 20px;
-            font-weight: 700;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            touch-action: manipulation;
-            margin-top: 20px;
-        }
-
-        .finish-btn:hover {
-            transform: scale(1.02);
-            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.5);
-        }
-
-        .finish-btn:active {
-            transform: scale(0.98);
-        }
-
-        .finish-section {
-            display: none;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid var(--border-color);
-        }
-
-        .finish-section.active {
-            display: block;
-        }
-
-        .share-btn {
-            display: block;
-            width: 100%;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border: none;
-            padding: 14px 20px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 700;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            touch-action: manipulation;
-            margin-top: 10px;
-        }
-
-        .share-btn:hover {
-            transform: scale(1.02);
-        }
-
-        .share-btn:active {
-            transform: scale(0.98);
-        }
-
-        .copy-notification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-100px);
-            background: #10b981;
-            color: white;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            z-index: 10002;
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-
-        .copy-notification.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
-
-        .save-indicator {
-            text-align: center;
-            color: #10b981;
-            font-size: 11px;
-            margin-bottom: 12px;
-            min-height: 16px;
-            font-weight: 600;
-        }
-
-        .sync-status {
-            text-align: center;
-            color: #3b82f6;
-            font-size: 10px;
-            margin-bottom: 8px;
-            min-height: 14px;
-            font-weight: 600;
-        }
-
-        .wednesday-section {
-            display: none;
-            background: #fef3c7;
-            border: 2px solid #f59e0b;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-
-        .wednesday-section.active {
-            display: block;
-        }
-
-        .wednesday-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: #92400e;
-            margin-bottom: 12px;
-            text-align: center;
-        }
-
-        .wednesday-input-group {
-            margin-bottom: 12px;
-        }
-
-        .wednesday-input-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .wednesday-input-group label {
-            font-size: 12px;
-            color: #92400e;
-            margin-bottom: 5px;
-        }
-
-        .wednesday-input-group input[type="text"] {
-            width: 100%;
-            padding: 10px 8px;
-            border: 2px solid #f59e0b;
-            border-radius: 6px;
-            font-size: 15px;
-            transition: border-color 0.3s;
-        }
-
-        .wednesday-input-group input[type="text"]:focus {
-            outline: none;
-            border-color: #d97706;
-        }
-
-        .wednesday-input-group input[type="time"] {
-            padding: 10px 8px;
-            border: 2px solid #f59e0b;
-            border-radius: 6px;
-            font-size: 15px;
-            transition: border-color 0.3s;
-            background: white;
-        }
-
-        .wednesday-input-group input[type="time"]:focus {
-            outline: none;
-            border-color: #d97706;
-        }
-
-        .meeting-row {
-            display: grid;
-            grid-template-columns: 120px 1fr;
-            gap: 8px;
-            align-items: start;
-        }
-
-        .person-card {
-            background: var(--card-bg);
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 12px;
-            transition: transform 0.2s, background 0.3s;
-        }
-
-        .person-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .person-name {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-primary);
-            transition: color 0.3s;
-        }
-
-        .person-daily-total {
-            background: #667eea;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 16px;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .person-daily-total.friday-bonus {
-            background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
-        }
-
-        .input-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .input-group label {
-            font-size: 11px;
-            margin-bottom: 5px;
-            color: var(--text-secondary);
-        }
-
-        input[type="number"], input[type="text"] {
-            padding: 10px 8px;
-            border: 2px solid var(--input-border);
-            border-radius: 6px;
-            font-size: 15px;
-            transition: border-color 0.3s, background 0.3s, color 0.3s;
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            background: var(--container-bg);
-            color: var(--text-primary);
-        }
-
-        input[type="number"]:focus, input[type="text"]:focus {
-            outline: none;
-            border-color: var(--input-focus);
-        }
-
-        .decimal-display {
-            font-size: 10px;
-            color: #667eea;
-            margin-top: 3px;
-            min-height: 14px;
-            font-weight: 600;
-        }
-
-        .totals-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid var(--border-color);
-        }
-
-        .totals-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-            text-align: center;
-            transition: color 0.3s;
-        }
-
-        .total-card {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            font-weight: 600;
-            position: relative;
-            transition: transform 0.2s;
-        }
-
-        .total-card.first-place {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            transform: scale(1.02);
-            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
-        }
-
-        .total-card.second-place {
-            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
-        }
-
-        .total-card.third-place {
-            background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%);
-        }
-
-        .crown {
-            position: absolute;
-            top: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 28px;
-            animation: bounce 1s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateX(-50%) translateY(0); }
-            50% { transform: translateX(-50%) translateY(-5px); }
-        }
-
-        .total-name {
-            font-size: 15px;
-        }
-
-        .total-value {
-            font-size: 18px;
-        }
-
-        .badges-section {
-            margin-top: 20px;
-            padding: 15px;
-            background: var(--card-bg);
-            border-radius: 10px;
-            border: 2px solid var(--border-color);
-        }
-
-        .badges-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-            text-align: center;
-        }
-
-        .badges-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 10px;
-        }
-
-        .badge {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 10px;
-            background: var(--container-bg);
-            border-radius: 8px;
-            border: 2px solid var(--border-color);
-            transition: transform 0.2s;
-            opacity: 0.3;
-        }
-
-        .badge.earned {
-            opacity: 1;
-            border-color: #fbbf24;
-            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
-        }
-
-        .badge.earned:hover {
-            transform: scale(1.05);
-        }
-
-        .badge-icon {
-            font-size: 32px;
-            margin-bottom: 5px;
-        }
-
-        .badge-name {
-            font-size: 10px;
-            text-align: center;
-            color: var(--text-secondary);
-            font-weight: 600;
-        }
-
-        .history-section {
-            margin-top: 20px;
-            padding: 15px;
-            background: var(--card-bg);
-            border-radius: 10px;
-            border: 2px solid var(--border-color);
-        }
-
-        .history-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-            text-align: center;
-        }
-
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            background: var(--container-bg);
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-
-        .history-week {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .history-winner {
-            color: var(--text-secondary);
-        }
-
-        .help-text {
-            font-size: 10px;
-            color: var(--text-tertiary);
-            text-align: center;
-            margin-top: 8px;
-            line-height: 1.4;
-            transition: color 0.3s;
-        }
-
-        .racing-results-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid var(--border-color);
-        }
-
-        .racing-results-btn {
-            display: block;
-            width: 100%;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            text-decoration: none;
-            padding: 14px 20px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            text-align: center;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-            touch-action: manipulation;
-        }
-
-        .racing-results-btn:active {
-            transform: scale(0.98);
-        }
-
-        @media (min-width: 600px) {
-            body {
-                padding: 20px;
-                align-items: center;
-            }
-
-            .container {
-                padding: 40px;
-            }
-
-            h1 {
-                font-size: 28px;
-            }
-
-            .subtitle {
-                font-size: 14px;
-            }
-
-            .controls {
-                flex-direction: row;
-                gap: 10px;
-            }
-
-            .reset-btn {
-                width: auto;
-                align-self: flex-end;
-            }
-
-            .person-card {
-                padding: 18px;
-            }
-
-            .input-row {
-                gap: 12px;
-            }
-
-            input[type="number"], input[type="text"] {
-                padding: 12px;
-            }
-
-            .meeting-row {
-                grid-template-columns: 140px 1fr;
-                gap: 12px;
-            }
-
-            .victory-banner h2 {
-                font-size: 56px;
-            }
-
-            .victory-banner .winner-name {
-                font-size: 96px;
-            }
-
-            .badges-grid {
-                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            }
-        }
-
-        @media (max-width: 380px) {
-            .container {
-                padding: 15px 12px;
-            }
-
-            h1 {
-                font-size: 20px;
-            }
-
-            .person-name {
-                font-size: 15px;
-            }
-
-            .person-daily-total {
-                font-size: 12px;
-                padding: 4px 8px;
-            }
-
-            .input-row {
-                gap: 6px;
-            }
-
-            input[type="number"], input[type="text"] {
-                padding: 9px 6px;
-                font-size: 14px;
-            }
-
-            .meeting-row {
-                grid-template-columns: 100px 1fr;
-                gap: 6px;
-            }
-
-            .top-controls {
-                bottom: 15px;
-                right: 15px;
-            }
-
-            .icon-btn {
-                width: 45px;
-                height: 45px;
-                font-size: 20px;
-            }
-
-            .victory-banner {
-                padding: 30px 20px;
-                width: 90%;
-            }
-
-            .victory-banner h2 {
-                font-size: 32px;
-            }
-
-            .victory-banner .winner-name {
-                font-size: 48px;
-            }
-
-            .victory-banner .winner-score {
-                font-size: 24px;
-            }
-
-            .finish-btn {
-                font-size: 18px;
-                padding: 15px 20px;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Wordle & Nags Tracker</title>
+<style>
+:root {
+--bg-gradient-start: #667eea;
+--bg-gradient-end: #764ba2;
+--container-bg: #ffffff;
+--text-primary: #333;
+--text-secondary: #666;
+--text-tertiary: #999;
+--card-bg: #f8f9fa;
+--border-color: #e0e0e0;
+--input-border: #e0e0e0;
+--input-focus: #667eea;
+--shadow: rgba(0, 0, 0, 0.3);
+}
+[data-theme="dark"] {
+--bg-gradient-start: #1a1a2e;
+--bg-gradient-end: #16213e;
+--container-bg: #0f3460;
+--text-primary: #e8e8e8;
+--text-secondary: #b8b8b8;
+--text-tertiary: #888;
+--card-bg: #1a1a2e;
+--border-color: #2a2a3e;
+--input-border: #3a3a4e;
+--input-focus: #667eea;
+--shadow: rgba(0, 0, 0, 0.6);
+}
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+-webkit-tap-highlight-color: transparent;
+}
+body {
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+min-height: 100vh;
+padding: 10px;
+display: flex;
+justify-content: center;
+align-items: flex-start;
+padding-top: 15px;
+transition: background 0.3s ease;
+}
+#confetti-canvas, #horse-canvas, #money-canvas {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+pointer-events: none;
+z-index: 9999;
+}
+#horse-canvas { z-index: 9998; }
+#money-canvas { z-index: 9997; }
+.top-controls {
+position: fixed;
+bottom: 20px;
+right: 20px;
+display: flex;
+gap: 10px;
+z-index: 10000;
+}
+.icon-btn {
+width: 50px;
+height: 50px;
+border-radius: 50%;
+background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+border: none;
+color: white;
+font-size: 24px;
+cursor: pointer;
+box-shadow: 0 4px 12px var(--shadow);
+transition: transform 0.2s, box-shadow 0.2s;
+display: flex;
+align-items: center;
+justify-content: center;
+touch-action: manipulation;
+}
+.icon-btn:hover {
+transform: scale(1.05);
+box-shadow: 0 6px 16px var(--shadow);
+}
+.icon-btn:active {
+transform: scale(0.95);
+}
+.icon-btn.muted {
+background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+[data-theme="dark"] .icon-btn {
+background: linear-gradient(135deg, #4a5fd8 0%, #5a3f8a 100%);
+}
+.victory-banner {
+position: fixed;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%) scale(0);
+background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+color: white;
+padding: 40px 60px;
+border-radius: 20px;
+box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+text-align: center;
+z-index: 10001;
+opacity: 0;
+transition: all 0.5s ease;
+border: 5px solid #fff;
+}
+.victory-banner.show {
+transform: translate(-50%, -50%) scale(1);
+opacity: 1;
+}
+.victory-banner h2 {
+font-size: 48px;
+margin-bottom: 10px;
+text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+.victory-banner .winner-name {
+font-size: 72px;
+font-weight: 900;
+margin: 20px 0;
+text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+animation: glow 2s infinite;
+}
+.victory-banner .winner-score {
+font-size: 36px;
+margin-top: 10px;
+opacity: 0.95;
+}
+.victory-banner .close-btn {
+margin-top: 30px;
+padding: 15px 40px;
+background: white;
+color: #d97706;
+border: none;
+border-radius: 10px;
+font-size: 18px;
+font-weight: 700;
+cursor: pointer;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+transition: transform 0.2s;
+}
+.victory-banner .close-btn:hover {
+transform: scale(1.05);
+}
+@keyframes glow {
+0%, 100% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.5); }
+50% { text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 255, 255, 0.8); }
+}
+@keyframes shake {
+0%, 100% { transform: translateX(0); }
+25% { transform: translateX(-10px); }
+75% { transform: translateX(10px); }
+}
+.container {
+background: var(--container-bg);
+border-radius: 16px;
+box-shadow: 0 20px 60px var(--shadow);
+padding: 20px 15px;
+max-width: 600px;
+width: 100%;
+margin-bottom: 80px;
+transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+h1 {
+color: var(--text-primary);
+margin-bottom: 6px;
+text-align: center;
+font-size: 22px;
+transition: color 0.3s ease;
+}
+.subtitle {
+text-align: center;
+color: var(--text-secondary);
+margin-bottom: 15px;
+font-size: 12px;
+transition: color 0.3s ease;
+}
+.week-selector {
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: var(--card-bg);
+padding: 12px 15px;
+border-radius: 8px;
+margin-bottom: 15px;
+border: 2px solid var(--border-color);
+}
+.week-selector button {
+background: #667eea;
+color: white;
+border: none;
+padding: 8px 12px;
+border-radius: 6px;
+cursor: pointer;
+font-size: 14px;
+font-weight: 600;
+transition: background 0.3s;
+}
+.week-selector button:active {
+transform: scale(0.95);
+}
+.week-selector button:disabled {
+background: #ccc;
+cursor: not-allowed;
+}
+.week-info {
+font-weight: 700;
+color: var(--text-primary);
+font-size: 15px;
+}
+.friday-banner {
+background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
+color: white;
+padding: 10px;
+border-radius: 8px;
+text-align: center;
+font-weight: 700;
+margin-bottom: 15px;
+font-size: 13px;
+display: none;
+animation: pulse 2s infinite;
+}
+.friday-banner.active {
+display: block;
+}
+.mystery-banner {
+background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+color: white;
+padding: 12px;
+border-radius: 8px;
+text-align: center;
+font-weight: 700;
+margin-bottom: 15px;
+font-size: 13px;
+display: none;
+animation: pulse 2s infinite;
+box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+.mystery-banner.active {
+display: block;
+}
+.mystery-revealed {
+background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+color: white;
+padding: 15px;
+border-radius: 10px;
+text-align: center;
+font-weight: 700;
+margin-bottom: 15px;
+font-size: 15px;
+box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+animation: revealPulse 1s ease-out;
+}
+@keyframes revealPulse {
+0% { transform: scale(0.8); opacity: 0; }
+50% { transform: scale(1.05); }
+100% { transform: scale(1); opacity: 1; }
+}
+.mystery-multiplier {
+font-size: 24px;
+font-weight: 900;
+margin: 5px 0;
+text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+@keyframes pulse {
+0%, 100% { transform: scale(1); }
+50% { transform: scale(1.02); }
+}
+.controls {
+display: flex;
+flex-direction: column;
+gap: 8px;
+margin-bottom: 15px;
+}
+.day-selector {
+flex: 1;
+}
+label {
+display: block;
+margin-bottom: 6px;
+color: var(--text-primary);
+font-weight: 600;
+font-size: 13px;
+transition: color 0.3s ease;
+}
+select {
+width: 100%;
+padding: 12px 10px;
+border: 2px solid var(--input-border);
+border-radius: 8px;
+font-size: 15px;
+background: var(--container-bg);
+color: var(--text-primary);
+cursor: pointer;
+transition: border-color 0.3s, background 0.3s, color 0.3s;
+-webkit-appearance: none;
+appearance: none;
+background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+background-repeat: no-repeat;
+background-position: right 10px center;
+}
+[data-theme="dark"] select {
+background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23e8e8e8' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+}
+select:focus {
+outline: none;
+border-color: var(--input-focus);
+}
+.reset-btn {
+background: #ef4444;
+color: white;
+border: none;
+padding: 12px 16px;
+border-radius: 8px;
+cursor: pointer;
+font-size: 14px;
+font-weight: 600;
+transition: background 0.3s;
+width: 100%;
+touch-action: manipulation;
+}
+.reset-btn:active {
+background: #dc2626;
+transform: scale(0.98);
+}
+.finish-btn {
+display: block;
+width: 100%;
+background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+color: white;
+border: none;
+padding: 18px 20px;
+border-radius: 10px;
+font-size: 20px;
+font-weight: 700;
+text-align: center;
+box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+cursor: pointer;
+transition: transform 0.2s, box-shadow 0.2s;
+touch-action: manipulation;
+margin-top: 20px;
+}
+.finish-btn:hover {
+transform: scale(1.02);
+box-shadow: 0 6px 16px rgba(245, 158, 11, 0.5);
+}
+.finish-btn:active {
+transform: scale(0.98);
+}
+.finish-section {
+display: none;
+margin-top: 20px;
+padding-top: 20px;
+border-top: 2px solid var(--border-color);
+}
+.finish-section.active {
+display: block;
+}
+.share-btn {
+display: block;
+width: 100%;
+background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+color: white;
+border: none;
+padding: 14px 20px;
+border-radius: 8px;
+font-size: 16px;
+font-weight: 700;
+text-align: center;
+box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+cursor: pointer;
+transition: transform 0.2s, box-shadow 0.2s;
+touch-action: manipulation;
+margin-top: 10px;
+}
+.share-btn:hover {
+transform: scale(1.02);
+}
+.share-btn:active {
+transform: scale(0.98);
+}
+.copy-notification {
+position: fixed;
+top: 20px;
+left: 50%;
+transform: translateX(-50%) translateY(-100px);
+background: #10b981;
+color: white;
+padding: 15px 30px;
+border-radius: 10px;
+font-weight: 600;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+z-index: 10002;
+opacity: 0;
+transition: all 0.3s ease;
+}
+.copy-notification.show {
+transform: translateX(-50%) translateY(0);
+opacity: 1;
+}
+.save-indicator {
+text-align: center;
+color: #10b981;
+font-size: 11px;
+margin-bottom: 12px;
+min-height: 16px;
+font-weight: 600;
+}
+.sync-status {
+text-align: center;
+color: #3b82f6;
+font-size: 10px;
+margin-bottom: 8px;
+min-height: 14px;
+font-weight: 600;
+}
+.wednesday-section {
+display: none;
+background: #fef3c7;
+border: 2px solid #f59e0b;
+border-radius: 10px;
+padding: 15px;
+margin-bottom: 15px;
+}
+.wednesday-section.active {
+display: block;
+}
+.wednesday-title {
+font-size: 15px;
+font-weight: 700;
+color: #92400e;
+margin-bottom: 12px;
+text-align: center;
+}
+.wednesday-input-group {
+margin-bottom: 12px;
+}
+.wednesday-input-group:last-child {
+margin-bottom: 0;
+}
+.wednesday-input-group label {
+font-size: 12px;
+color: #92400e;
+margin-bottom: 5px;
+}
+.wednesday-input-group input[type="text"] {
+width: 100%;
+padding: 10px 8px;
+border: 2px solid #f59e0b;
+border-radius: 6px;
+font-size: 15px;
+transition: border-color 0.3s;
+}
+.wednesday-input-group input[type="text"]:focus {
+outline: none;
+border-color: #d97706;
+}
+.wednesday-input-group input[type="time"] {
+padding: 10px 8px;
+border: 2px solid #f59e0b;
+border-radius: 6px;
+font-size: 15px;
+transition: border-color 0.3s;
+background: white;
+}
+.wednesday-input-group input[type="time"]:focus {
+outline: none;
+border-color: #d97706;
+}
+.meeting-row {
+display: grid;
+grid-template-columns: 120px 1fr;
+gap: 8px;
+align-items: start;
+}
+.person-card {
+background: var(--card-bg);
+border-radius: 10px;
+padding: 12px;
+margin-bottom: 12px;
+transition: transform 0.2s, background 0.3s;
+}
+.person-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 12px;
+}
+.person-name {
+font-size: 16px;
+font-weight: 700;
+color: var(--text-primary);
+transition: color 0.3s;
+}
+.person-daily-total {
+background: #667eea;
+color: white;
+padding: 5px 10px;
+border-radius: 16px;
+font-size: 13px;
+font-weight: 600;
+}
+.person-daily-total.friday-bonus {
+background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
+}
+.input-row {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 8px;
+}
+.input-group {
+display: flex;
+flex-direction: column;
+}
+.input-group label {
+font-size: 11px;
+margin-bottom: 5px;
+color: var(--text-secondary);
+}
+input[type="number"], input[type="text"] {
+padding: 10px 8px;
+border: 2px solid var(--input-border);
+border-radius: 6px;
+font-size: 15px;
+transition: border-color 0.3s, background 0.3s, color 0.3s;
+-webkit-appearance: none;
+appearance: none;
+width: 100%;
+background: var(--container-bg);
+color: var(--text-primary);
+}
+input[type="number"]:focus, input[type="text"]:focus {
+outline: none;
+border-color: var(--input-focus);
+}
+input[type="number"]:disabled, input[type="text"]:disabled {
+opacity: 0.5;
+cursor: not-allowed;
+background: #f3f4f6;
+}
+[data-theme="dark"] input[type="number"]:disabled, 
+[data-theme="dark"] input[type="text"]:disabled {
+background: #1f2937;
+}
+.decimal-display {
+font-size: 10px;
+color: #667eea;
+margin-top: 3px;
+min-height: 14px;
+font-weight: 600;
+}
+.totals-section {
+margin-top: 20px;
+padding-top: 20px;
+border-top: 2px solid var(--border-color);
+}
+.totals-title {
+font-size: 16px;
+font-weight: 700;
+color: var(--text-primary);
+margin-bottom: 12px;
+text-align: center;
+transition: color 0.3s;
+}
+.total-card {
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+color: white;
+padding: 12px 15px;
+border-radius: 8px;
+margin-bottom: 8px;
+font-weight: 600;
+position: relative;
+transition: transform 0.2s;
+}
+.total-card.first-place {
+background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+transform: scale(1.02);
+box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+}
+.total-card.second-place {
+background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+.total-card.third-place {
+background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%);
+}
+.crown {
+position: absolute;
+top: -15px;
+left: 50%;
+transform: translateX(-50%);
+font-size: 28px;
+animation: bounce 1s infinite;
+}
+@keyframes bounce {
+0%, 100% { transform: translateX(-50%) translateY(0); }
+50% { transform: translateX(-50%) translateY(-5px); }
+}
+.total-name {
+font-size: 15px;
+}
+.total-value {
+font-size: 18px;
+}
+.badges-section {
+margin-top: 20px;
+padding: 15px;
+background: var(--card-bg);
+border-radius: 10px;
+border: 2px solid var(--border-color);
+}
+.badges-title {
+font-size: 16px;
+font-weight: 700;
+color: var(--text-primary);
+margin-bottom: 12px;
+text-align: center;
+}
+.badges-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+gap: 10px;
+}
+.badge {
+display: flex;
+flex-direction: column;
+align-items: center;
+padding: 10px;
+background: var(--container-bg);
+border-radius: 8px;
+border: 2px solid var(--border-color);
+transition: transform 0.2s;
+opacity: 0.3;
+}
+.badge.earned {
+opacity: 1;
+border-color: #fbbf24;
+box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+}
+.badge.earned:hover {
+transform: scale(1.05);
+}
+.badge-icon {
+font-size: 32px;
+margin-bottom: 5px;
+}
+.badge-name {
+font-size: 10px;
+text-align: center;
+color: var(--text-secondary);
+font-weight: 600;
+}
+.history-section {
+margin-top: 20px;
+padding: 15px;
+background: var(--card-bg);
+border-radius: 10px;
+border: 2px solid var(--border-color);
+}
+.history-title {
+font-size: 16px;
+font-weight: 700;
+color: var(--text-primary);
+margin-bottom: 12px;
+text-align: center;
+}
+.history-item {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 10px;
+background: var(--container-bg);
+border-radius: 6px;
+margin-bottom: 8px;
+}
+.history-week {
+font-weight: 600;
+color: var(--text-primary);
+}
+.history-winner {
+color: var(--text-secondary);
+}
+.help-text {
+font-size: 10px;
+color: var(--text-tertiary);
+text-align: center;
+margin-top: 8px;
+line-height: 1.4;
+transition: color 0.3s;
+}
+.racing-results-section {
+margin-top: 20px;
+padding-top: 20px;
+border-top: 2px solid var(--border-color);
+}
+.racing-results-btn {
+display: block;
+width: 100%;
+background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+color: white;
+text-decoration: none;
+padding: 14px 20px;
+border-radius: 8px;
+font-size: 15px;
+font-weight: 600;
+text-align: center;
+transition: transform 0.2s, box-shadow 0.2s;
+box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+touch-action: manipulation;
+}
+.racing-results-btn:active {
+transform: scale(0.98);
+}
+@media (min-width: 600px) {
+body {
+padding: 20px;
+align-items: center;
+}
+.container {
+padding: 40px;
+}
+h1 {
+font-size: 28px;
+}
+.subtitle {
+font-size: 14px;
+}
+.controls {
+flex-direction: row;
+gap: 10px;
+}
+.reset-btn {
+width: auto;
+align-self: flex-end;
+}
+.person-card {
+padding: 18px;
+}
+.input-row {
+gap: 12px;
+}
+input[type="number"], input[type="text"] {
+padding: 12px;
+}
+.meeting-row {
+grid-template-columns: 140px 1fr;
+gap: 12px;
+}
+.victory-banner h2 {
+font-size: 56px;
+}
+.victory-banner .winner-name {
+font-size: 96px;
+}
+.badges-grid {
+grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+}
+}
+@media (max-width: 380px) {
+.container {
+padding: 15px 12px;
+}
+h1 {
+font-size: 20px;
+}
+.person-name {
+font-size: 15px;
+}
+.person-daily-total {
+font-size: 12px;
+padding: 4px 8px;
+}
+.input-row {
+gap: 6px;
+}
+input[type="number"], input[type="text"] {
+padding: 9px 6px;
+font-size: 14px;
+}
+.meeting-row {
+grid-template-columns: 100px 1fr;
+gap: 6px;
+}
+.top-controls {
+bottom: 15px;
+right: 15px;
+}
+.icon-btn {
+width: 45px;
+height: 45px;
+font-size: 20px;
+}
+.victory-banner {
+padding: 30px 20px;
+width: 90%;
+}
+.victory-banner h2 {
+font-size: 32px;
+}
+.victory-banner .winner-name {
+font-size: 48px;
+}
+.victory-banner .winner-score {
+font-size: 24px;
+}
+.finish-btn {
+font-size: 18px;
+padding: 15px 20px;
+}
+}
+</style>
 </head>
 <body>
-    <canvas id="confetti-canvas"></canvas>
-    <canvas id="horse-canvas"></canvas>
-    <canvas id="money-canvas"></canvas>
+<canvas id="confetti-canvas"></canvas>
+<canvas id="horse-canvas"></canvas>
+<canvas id="money-canvas"></canvas>
+<div class="top-controls">
+<button class="icon-btn" id="soundToggle" onclick="toggleSound()">🔊</button>
+<button class="icon-btn" id="themeToggle" onclick="toggleTheme()">🌙</button>
+</div>
+<div class="copy-notification" id="copyNotification">
+📋 Copied to clipboard!
+</div>
+<div class="victory-banner" id="victoryBanner">
+<h2>🏆 WINNER! 🏆</h2>
+<div class="winner-name" id="winnerName">Carl</div>
+<div class="winner-score" id="winnerScore">Score: 100.00</div>
+<button class="close-btn" onclick="closeVictoryBanner()">Close</button>
+</div>
+<div class="container">
+<h1>📊 Wordle & Nags Tracker</h1>
+<p class="subtitle">Track daily scores and view running totals</p>
+<div class="week-selector">
+<button onclick="changeWeek(-1)">← Prev</button>
+<div class="week-info" id="weekInfo">Week 1, 2026</div>
+<button onclick="changeWeek(1)" id="nextWeekBtn">Next →</button>
+</div>
+<div class="sync-status" id="syncStatus">🔄 Connecting...</div>
+<div class="friday-banner" id="fridayBanner">
+🎉 FRIDAY BONUS! All points doubled! 🎉
+</div>
+<div class="mystery-banner" id="mysteryBanner">
+🎲 MYSTERY MULTIPLIER ACTIVE! One day this week has a hidden bonus... 🎲
+</div>
+<div class="mystery-revealed" id="mysteryRevealed" style="display: none;">
+<div>🎉 MYSTERY MULTIPLIER REVEALED! 🎉</div>
+<div class="mystery-multiplier" id="mysteryMultiplierText">x3</div>
+<div>Applied to today's Wordle scores!</div>
+</div>
+<div class="controls">
+<div class="day-selector">
+<label for="daySelect">Select Day of Week</label>
+<select id="daySelect" onchange="loadDayData()">
+<option value="Monday">Monday</option>
+<option value="Tuesday">Tuesday</option>
+<option value="Wednesday">Wednesday</option>
+<option value="Thursday">Thursday</option>
+<option value="Friday">Friday</option>
+</select>
+</div>
+<button class="reset-btn" onclick="resetData()">🔒 Reset All Data</button>
+</div>
+<div class="wednesday-section" id="wednesdaySection">
+<div class="wednesday-title">📅 Wednesday Details</div>
+<div class="wednesday-input-group">
+<label>Today's word is:</label>
+<input type="text" id="wednesday-word" oninput="saveWednesdayData()" placeholder="Enter the word...">
+</div>
+<div class="wednesday-input-group">
+<label>Today's meeting is:</label>
+<div class="meeting-row">
+<input type="time" id="wednesday-meeting-time" onchange="saveWednesdayData()">
+<input type="text" id="wednesday-meeting-details" oninput="saveWednesdayData()" placeholder="Meeting details...">
+</div>
+</div>
+</div>
+<div class="save-indicator" id="saveIndicator"></div>
+<div id="inputSection">
+<!-- CARL -->
+<div class="person-card">
+<div class="person-header">
+<div class="person-name">Carl</div>
+<div class="person-daily-total" id="carl-daily">0.00</div>
+</div>
+<div class="input-row">
+<div class="input-group">
+<label>Wordle</label>
+<input type="number" id="carl-wordle" step="1" min="0" inputmode="numeric" oninput="handleWordleInput('carl')">
+</div>
+<div class="input-group">
+<label>Horse Selection</label>
+<input type="text" id="carl-horse-selection" placeholder="Horse name" oninput="saveDayData()">
+</div>
+</div>
+<div class="input-row" style="margin-top: 8px;">
+<div class="input-group">
+<label>Nags (e.g., 1 1/2 or 1.5)</label>
+<input type="text" id="carl-nags" oninput="updateNagsDecimal('carl')">
+<div class="decimal-display" id="carl-nags-decimal"></div>
+</div>
+</div>
+</div>
+<!-- MAT -->
+<div class="person-card">
+<div class="person-header">
+<div class="person-name">Mat</div>
+<div class="person-daily-total" id="mat-daily">0.00</div>
+</div>
+<div class="input-row">
+<div class="input-group">
+<label>Wordle</label>
+<input type="number" id="mat-wordle" step="1" min="0" inputmode="numeric" oninput="handleWordleInput('mat')">
+</div>
+<div class="input-group">
+<label>Horse Selection</label>
+<input type="text" id="mat-horse-selection" placeholder="Horse name" oninput="saveDayData()">
+</div>
+</div>
+<div class="input-row" style="margin-top: 8px;">
+<div class="input-group">
+<label>Nags (e.g., 1 1/2 or 1.5)</label>
+<input type="text" id="mat-nags" oninput="updateNagsDecimal('mat')">
+<div class="decimal-display" id="mat-nags-decimal"></div>
+</div>
+</div>
+</div>
+<!-- PHILL -->
+<div class="person-card">
+<div class="person-header">
+<div class="person-name">Phill</div>
+<div class="person-daily-total" id="phill-daily">0.00</div>
+</div>
+<div class="input-row">
+<div class="input-group">
+<label>Wordle</label>
+<input type="number" id="phill-wordle" step="1" min="0" inputmode="numeric" oninput="handleWordleInput('phill')">
+</div>
+<div class="input-group">
+<label>Horse Selection</label>
+<input type="text" id="phill-horse-selection" placeholder="Horse name" oninput="saveDayData()">
+</div>
+</div>
+<div class="input-row" style="margin-top: 8px;">
+<div class="input-group">
+<label>Nags (e.g., 1 1/2 or 1.5)</label>
+<input type="text" id="phill-nags" oninput="updateNagsDecimal('phill')">
+<div class="decimal-display" id="phill-nags-decimal"></div>
+</div>
+</div>
+</div>
+</div>
+<p class="help-text">💡 Enter nags as fractions (1 1/2), decimals (1.5), or whole numbers (2)<br>🎉 Friday scores are automatically doubled!<br>🐴 Nags odds of 5.0+ trigger a celebration!<br>🎲 Mystery multiplier randomly applied Mon-Thu!</p>
+<div class="badges-section">
+<div class="badges-title">🏅 Achievements</div>
+<div class="badges-grid">
+<div class="badge" id="badge-onfire" title="Win 3 weeks in a row">
+<div class="badge-icon">🔥</div>
+<div class="badge-name">On Fire</div>
+</div>
+<div class="badge" id="badge-perfectweek" title="Highest score every day this week">
+<div class="badge-icon">🎯</div>
+<div class="badge-name">Perfect Week</div>
+</div>
+<div class="badge" id="badge-highroller" title="Win on nags 3+ times in one week">
+<div class="badge-icon">🐎</div>
+<div class="badge-name">High Roller</div>
+</div>
+<div class="badge" id="badge-wordsmith" title="Get 5+ Wordle scores of 1-3 this week">
+<div class="badge-icon">📚</div>
+<div class="badge-name">Wordsmith</div>
+</div>
+<div class="badge" id="badge-champion" title="Win 5+ weeks total">
+<div class="badge-icon">🏆</div>
+<div class="badge-name">Champion</div>
+</div>
+<div class="badge" id="badge-comeback" title="Win week after being in last place Monday">
+<div class="badge-icon">⚡</div>
+<div class="badge-name">Comeback</div>
+</div>
+</div>
+</div>
+<div class="totals-section">
+<div class="totals-title">Overall Totals</div>
+<div id="totals-container">
+<!-- Dynamically populated by updateLeaderboard() -->
+</div>
+</div>
+<div class="finish-section" id="finishSection">
+<button class="finish-btn" onclick="finishWeek()">
+🏁 FINISH - Declare Winner! 🏁
+</button>
+<button class="share-btn" onclick="shareResults()">
+📤 Share Week Results
+</button>
+</div>
+<div class="history-section">
+<div class="history-title">📜 Season Standings</div>
+<div id="historyContent">
+<p style="text-align: center; color: var(--text-secondary); font-size: 12px;">No completed weeks yet</p>
+</div>
+</div>
+<div class="racing-results-section">
+<a href="https://www.bbc.co.uk/sport/horse-racing/uk-ireland/results" target="_blank" class="racing-results-btn">
+🐴 View Horse Racing Results
+</a>
+</div>
+</div>
 
-    <div class="top-controls">
-        <button class="icon-btn" id="soundToggle" onclick="toggleSound()">🔊</button>
-        <button class="icon-btn" id="themeToggle" onclick="toggleTheme()">🌙</button>
-    </div>
-
-    <div class="copy-notification" id="copyNotification">
-        📋 Copied to clipboard!
-    </div>
-
-    <div class="victory-banner" id="victoryBanner">
-        <h2>🏆 WINNER! 🏆</h2>
-        <div class="winner-name" id="winnerName">Carl</div>
-        <div class="winner-score" id="winnerScore">Score: 100.00</div>
-        <button class="close-btn" onclick="closeVictoryBanner()">Close</button>
-    </div>
-
-    <div class="container">
-        <h1>📊 Wordle & Nags Tracker</h1>
-        <p class="subtitle">Track daily scores and view running totals</p>
-
-        <div class="week-selector">
-            <button onclick="changeWeek(-1)">← Prev</button>
-            <div class="week-info" id="weekInfo">Week 1, 2026</div>
-            <button onclick="changeWeek(1)" id="nextWeekBtn">Next →</button>
-        </div>
-
-        <div class="sync-status" id="syncStatus">🔄 Connecting...</div>
-
-        <div class="friday-banner" id="fridayBanner">
-            🎉 FRIDAY BONUS! All points doubled! 🎉
-        </div>
-
-        <div class="controls">
-            <div class="day-selector">
-                <label for="daySelect">Select Day of Week</label>
-                <select id="daySelect" onchange="loadDayData()">
-                    <option value="Monday">Monday</option>
-                    <option value="Tuesday">Tuesday</option>
-                    <option value="Wednesday">Wednesday</option>
-                    <option value="Thursday">Thursday</option>
-                    <option value="Friday">Friday</option>
-                </select>
-            </div>
-            <button class="reset-btn" onclick="resetData()">🔒 Reset All Data</button>
-        </div>
-
-        <div class="wednesday-section" id="wednesdaySection">
-            <div class="wednesday-title">📅 Wednesday Details</div>
-            
-            <div class="wednesday-input-group">
-                <label>Today's word is:</label>
-                <input type="text" id="wednesday-word" oninput="saveWednesdayData()" placeholder="Enter the word...">
-            </div>
-
-            <div class="wednesday-input-group">
-                <label>Today's meeting is:</label>
-                <div class="meeting-row">
-                    <input type="time" id="wednesday-meeting-time" onchange="saveWednesdayData()">
-                    <input type="text" id="wednesday-meeting-details" oninput="saveWednesdayData()" placeholder="Meeting details...">
-                </div>
-            </div>
-        </div>
-
-        <div class="save-indicator" id="saveIndicator"></div>
-
-        <div id="inputSection">
-            <div class="person-card">
-                <div class="person-header">
-                    <div class="person-name">Carl</div>
-                    <div class="person-daily-total" id="carl-daily">0.00</div>
-                </div>
-                <div class="input-row">
-                    <div class="input-group">
-                        <label>Wordle</label>
-                        <input type="number" id="carl-wordle" step="1" min="0" inputmode="numeric" oninput="handleWordleInput('carl')">
-                    </div>
-                    <div class="input-group">
-                        <label>Nags (e.g., 1 1/2 or 1.5)</label>
-                        <input type="text" id="carl-nags" oninput="updateNagsDecimal('carl')">
-                        <div class="decimal-display" id="carl-nags-decimal"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="person-card">
-                <div class="person-header">
-                    <div class="person-name">Mat</div>
-                    <div class="person-daily-total" id="mat-daily">0.00</div>
-                </div>
-                <div class="input-row">
-                    <div class="input-group">
-                        <label>Wordle</label>
-                        <input type="number" id="mat-wordle" step="1" min="0" inputmode="numeric" oninput="handleWordleInput('mat')">
-                    </div>
-                    <div class="input-group">
-                        <label>Nags (e.g., 1 1/2 or 1.5)</label>
-                        <input type="text" id="mat-nags" oninput="updateNagsDecimal('mat')">
-                        <div class="decimal-display" id="mat-nags-decimal"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="person-card">
-                <div class="person-header">
-                    <div class="person-name">Phill</div>
-                    <div class="person-daily-total" id="phill-daily">0.00</div>
-                </div>
-                <div class="input-row">
-                    <div class="input-group">
-                        <label>Wordle</label>
-                        <input type="number" id="phill-wordle" step="1" min="0" inputmode="numeric" oninput="handleWordleInput('phill')">
-                    </div>
-                    <div class="input-group">
-                        <label>Nags (e.g., 1 1/2 or 1.5)</label>
-                        <input type="text" id="phill-nags" oninput="updateNagsDecimal('phill')">
-                        <div class="decimal-display" id="phill-nags-decimal"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <p class="help-text">💡 Enter nags as fractions (1 1/2), decimals (1.5), or whole numbers (2)<br>🎉 Friday scores are automatically doubled!<br>🐴 Nags odds of 5.0+ trigger a celebration!</p>
-
-        <div class="badges-section">
-            <div class="badges-title">🏅 Achievements</div>
-            <div class="badges-grid">
-                <div class="badge" id="badge-onfire" title="Win 3 weeks in a row">
-                    <div class="badge-icon">🔥</div>
-                    <div class="badge-name">On Fire</div>
-                </div>
-                <div class="badge" id="badge-perfectweek" title="Highest score every day this week">
-                    <div class="badge-icon">🎯</div>
-                    <div class="badge-name">Perfect Week</div>
-                </div>
-                <div class="badge" id="badge-highroller" title="Win on nags 3+ times in one week">
-                    <div class="badge-icon">🐎</div>
-                    <div class="badge-name">High Roller</div>
-                </div>
-                <div class="badge" id="badge-wordsmith" title="Get 5+ Wordle scores of 1-3 this week">
-                    <div class="badge-icon">📚</div>
-                    <div class="badge-name">Wordsmith</div>
-                </div>
-                <div class="badge" id="badge-champion" title="Win 5+ weeks total">
-                    <div class="badge-icon">🏆</div>
-                    <div class="badge-name">Champion</div>
-                </div>
-                <div class="badge" id="badge-comeback" title="Win week after being in last place Monday">
-                    <div class="badge-icon">⚡</div>
-                    <div class="badge-name">Comeback</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="totals-section">
-            <div class="totals-title">Overall Totals</div>
-            <div class="total-card" id="total-card-carl">
-                <span class="total-name">Carl</span>
-                <span class="total-value" id="carl-total">0.00</span>
-            </div>
-            <div class="total-card" id="total-card-mat">
-                <span class="total-name">Mat</span>
-                <span class="total-value" id="mat-total">0.00</span>
-            </div>
-            <div class="total-card" id="total-card-phill">
-                <span class="total-name">Phill</span>
-                <span class="total-value" id="phill-total">0.00</span>
-            </div>
-        </div>
-
-        <div class="finish-section" id="finishSection">
-            <button class="finish-btn" onclick="finishWeek()">
-                🏁 FINISH - Declare Winner! 🏁
-            </button>
-            <button class="share-btn" onclick="shareResults()">
-                📤 Share Week Results
-            </button>
-        </div>
-
-        <div class="history-section">
-            <div class="history-title">📜 Season Standings</div>
-            <div id="historyContent">
-                <p style="text-align: center; color: var(--text-secondary); font-size: 12px;">No completed weeks yet</p>
-            </div>
-        </div>
-
-        <div class="racing-results-section">
-            <a href="https://www.bbc.co.uk/sport/horse-racing/uk-ireland/results" target="_blank" class="racing-results-btn">
-                🐴 View Horse Racing Results
-            </a>
-        </div>
-    </div>
-
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
-    <script>
-        const firebaseConfig = {
-  apiKey: "AIzaSyAbOnhiomdlDyTFZfYMfteoIm8fwHKRKsk",
-  authDomain: "wordle-1affc.firebaseapp.com",
-  databaseURL: "https://wordle-1affc-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "wordle-1affc",
-  storageBucket: "wordle-1affc.firebasestorage.app",
-  messagingSenderId: "242269500720",
-  appId: "1:242269500720:web:af2adc376cd9b1b60c44f5"
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+apiKey: "AIzaSyAbOnhiomdlDyTFZfYMfteoIm8fwHKRKsk",
+authDomain: "wordle-1affc.firebaseapp.com",
+databaseURL: "https://wordle-1affc-default-rtdb.europe-west1.firebasedatabase.app",
+projectId: "wordle-1affc",
+storageBucket: "wordle-1affc.firebasestorage.app",
+messagingSenderId: "242269500720",
+appId: "1:242269500720:web:af2adc376cd9b1b60c44f5"
 };
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+const dataRef = database.ref('wordleNagsData');
 
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const dataRef = database.ref('wordleNagsData');
+const RESET_PASSWORD = "wordle2026";
 
-        // Password protection for reset - CHANGE THIS PASSWORD!
-        const RESET_PASSWORD = "wordle2026";
-
-        function validateResetPassword(inputPassword) {
-            return inputPassword === RESET_PASSWORD;
-        }
-
-        function resetData() {
-            const passwordPrompt = document.createElement('div');
-            passwordPrompt.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.8);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 10003;
-            `;
-            
-            passwordPrompt.innerHTML = `
-                <div style="
-                    background: var(--container-bg);
-                    padding: 30px;
-                    border-radius: 16px;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-                    max-width: 400px;
-                    width: 90%;
-                ">
-                    <h3 style="color: var(--text-primary); margin-bottom: 15px; text-align: center;">
-                        🔒 Reset Data
-                    </h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center; font-size: 14px;">
-                        This action will delete ALL data for ALL users. Please enter the password to continue.
-                    </p>
-                    <input 
-                        type="password" 
-                        id="resetPasswordInput" 
-                        placeholder="Enter password"
-                        style="
-                            width: 100%;
-                            padding: 12px;
-                            border: 2px solid var(--input-border);
-                            border-radius: 8px;
-                            font-size: 15px;
-                            margin-bottom: 15px;
-                            background: var(--container-bg);
-                            color: var(--text-primary);
-                        "
-                    >
-                    <div style="display: flex; gap: 10px;">
-                        <button 
-                            onclick="closePasswordPrompt()" 
-                            style="
-                                flex: 1;
-                                padding: 12px;
-                                background: #6b7280;
-                                color: white;
-                                border: none;
-                                border-radius: 8px;
-                                font-weight: 600;
-                                cursor: pointer;
-                                font-size: 14px;
-                            "
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            onclick="confirmReset()" 
-                            style="
-                                flex: 1;
-                                padding: 12px;
-                                background: #ef4444;
-                                color: white;
-                                border: none;
-                                border-radius: 8px;
-                                font-weight: 600;
-                                cursor: pointer;
-                                font-size: 14px;
-                            "
-                        >
-                            Reset All
-                        </button>
-                    </div>
-                    <p id="passwordError" style="
-                        color: #ef4444;
-                        font-size: 12px;
-                        margin-top: 10px;
-                        text-align: center;
-                        display: none;
-                    ">
-                        ❌ Incorrect password
-                    </p>
-                </div>
-            `;
-            
-            document.body.appendChild(passwordPrompt);
-            
-            setTimeout(() => {
-                document.getElementById('resetPasswordInput').focus();
-            }, 100);
-            
-            document.getElementById('resetPasswordInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    confirmReset();
-                }
-            });
-        }
-
-        function closePasswordPrompt() {
-            const prompt = document.body.querySelector('[style*="rgba(0, 0, 0, 0.8)"]');
-            if (prompt) {
-                document.body.removeChild(prompt);
-            }
-        }
-
-        function confirmReset() {
-            const inputPassword = document.getElementById('resetPasswordInput').value;
-            const errorMsg = document.getElementById('passwordError');
-            
-            if (validateResetPassword(inputPassword)) {
-                closePasswordPrompt();
-                
-                if (confirm('⚠️ FINAL WARNING: This will permanently delete ALL data for ALL weeks and ALL users. Are you absolutely sure?')) {
-                    data = { 
-                        [`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)),
-                        history: {}
-                    };
-                    lastNagsValues = { carl: 0, mat: 0, phill: 0 };
-                    saveToFirebase();
-                    loadDayData();
-                    updateHistory();
-                    
-                    const notification = document.createElement('div');
-                    notification.style.cssText = `
-                        position: fixed;
-                        top: 20px;
-                        left: 50%;
-                        transform: translateX(-50%);
-                        background: #ef4444;
-                        color: white;
-                        padding: 15px 30px;
-                        border-radius: 10px;
-                        font-weight: 600;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                        z-index: 10004;
-                    `;
-                    notification.textContent = '🗑️ All data has been reset!';
-                    document.body.appendChild(notification);
-                    
-                    setTimeout(() => {
-                        document.body.removeChild(notification);
-                    }, 3000);
-                }
-            } else {
-                errorMsg.style.display = 'block';
-                document.getElementById('resetPasswordInput').value = '';
-                document.getElementById('resetPasswordInput').focus();
-                
-                const input = document.getElementById('resetPasswordInput');
-                input.style.animation = 'shake 0.3s';
-                setTimeout(() => {
-                    input.style.animation = '';
-                }, 300);
-            }
-        }
-
-        // Week and theme management
-        let currentWeek = getCurrentWeekNumber();
-        let currentYear = new Date().getFullYear();
-        let theme = localStorage.getItem('theme') || 'light';
-
-        document.documentElement.setAttribute('data-theme', theme);
-        if (theme === 'dark') {
-            document.getElementById('themeToggle').textContent = '☀️';
-        }
-
-        function getCurrentWeekNumber() {
-    const now = new Date();
-    
-    // ISO 8601 week calculation
-    const target = new Date(now.valueOf());
-    const dayNumber = (now.getDay() + 6) % 7; // Make Monday = 0
-    target.setDate(target.getDate() - dayNumber + 3); // Nearest Thursday
-    const firstThursday = target.valueOf();
-    target.setMonth(0, 1); // January 1st
-    if (target.getDay() !== 4) {
-        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
-    }
-    
-    return 1 + Math.ceil((firstThursday - target) / 604800000); // 604800000 = 7 * 24 * 3600 * 1000
+function validateResetPassword(inputPassword) {
+return inputPassword === RESET_PASSWORD;
 }
 
-
-        function changeWeek(direction) {
-            currentWeek += direction;
-            if (currentWeek < 1) {
-                currentWeek = 52;
-                currentYear--;
-            } else if (currentWeek > 52) {
-                currentWeek = 1;
-                currentYear++;
-            }
-            
-            updateWeekDisplay();
-            loadWeekData();
-        }
-
-        function updateWeekDisplay() {
-            document.getElementById('weekInfo').textContent = `Week ${currentWeek}, ${currentYear}`;
-            
-            const thisWeek = getCurrentWeekNumber();
-            const thisYear = new Date().getFullYear();
-            const isCurrentWeek = (currentWeek === thisWeek && currentYear === thisYear);
-            const isFutureWeek = (currentYear > thisYear) || (currentYear === thisYear && currentWeek > thisWeek);
-            
-            document.getElementById('nextWeekBtn').disabled = isCurrentWeek || isFutureWeek;
-        }
-
-        function toggleTheme() {
-            theme = theme === 'light' ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-            
-            const btn = document.getElementById('themeToggle');
-            btn.textContent = theme === 'dark' ? '☀️' : '🌙';
-        }
-
-        let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioContext = new AudioContext();
-
-        function playCelebrationSound() {
-            if (!soundEnabled) return;
-            audioContext.resume();
-            
-            const now = audioContext.currentTime;
-            
-            [0, 0.08, 0.16, 0.24].forEach((delay, i) => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
-                
-                const notes = [523.25, 659.25, 783.99, 1046.50];
-                osc.frequency.setValueAtTime(notes[i], now + delay);
-                osc.type = 'sine';
-                
-                gain.gain.setValueAtTime(0, now + delay);
-                gain.gain.linearRampToValueAtTime(0.3, now + delay + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.3);
-                
-                osc.start(now + delay);
-                osc.stop(now + delay + 0.3);
-            });
-        }
-
-        function playHorseSound() {
-            if (!soundEnabled) return;
-            audioContext.resume();
-            
-            const now = audioContext.currentTime;
-            
-            [0, 0.12, 0.24, 0.36].forEach((delay) => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
-                
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(80, now + delay);
-                osc.frequency.exponentialRampToValueAtTime(40, now + delay + 0.05);
-                
-                gain.gain.setValueAtTime(0.3, now + delay);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.05);
-                
-                osc.start(now + delay);
-                osc.stop(now + delay + 0.05);
-            });
-            
-            setTimeout(() => {
-                const trumpet = audioContext.createOscillator();
-                const trumpetGain = audioContext.createGain();
-                const now = audioContext.currentTime;
-                
-                trumpet.connect(trumpetGain);
-                trumpetGain.connect(audioContext.destination);
-                
-                trumpet.type = 'sawtooth';
-                
-                const melody = [
-                    { freq: 392, time: 0, duration: 0.15 },
-                    { freq: 523.25, time: 0.15, duration: 0.15 },
-                    { freq: 659.25, time: 0.3, duration: 0.25 },
-                    { freq: 783.99, time: 0.55, duration: 0.4 }
-                ];
-                
-                melody.forEach(note => {
-                    trumpet.frequency.setValueAtTime(note.freq, now + note.time);
-                });
-                
-                trumpetGain.gain.setValueAtTime(0, now);
-                trumpetGain.gain.linearRampToValueAtTime(0.25, now + 0.01);
-                trumpetGain.gain.setValueAtTime(0.25, now + 0.8);
-                trumpetGain.gain.exponentialRampToValueAtTime(0.01, now + 1);
-                
-                trumpet.start(now);
-                trumpet.stop(now + 1);
-            }, 500);
-        }
-
-        function playVictorySound() {
-            if (!soundEnabled) return;
-            audioContext.resume();
-            
-            const now = audioContext.currentTime;
-            
-            const fanfare = [
-                { freq: 523.25, time: 0, duration: 0.2 },
-                { freq: 659.25, time: 0.2, duration: 0.2 },
-                { freq: 783.99, time: 0.4, duration: 0.3 },
-                { freq: 1046.50, time: 0.7, duration: 0.5 },
-                { freq: 783.99, time: 1.2, duration: 0.2 },
-                { freq: 1046.50, time: 1.4, duration: 0.6 }
-            ];
-            
-            fanfare.forEach(note => {
-                const osc1 = audioContext.createOscillator();
-                const gain1 = audioContext.createGain();
-                
-                osc1.connect(gain1);
-                gain1.connect(audioContext.destination);
-                
-                osc1.type = 'sawtooth';
-                osc1.frequency.setValueAtTime(note.freq, now + note.time);
-                
-                gain1.gain.setValueAtTime(0, now + note.time);
-                gain1.gain.linearRampToValueAtTime(0.3, now + note.time + 0.02);
-                gain1.gain.setValueAtTime(0.3, now + note.time + note.duration - 0.1);
-                gain1.gain.exponentialRampToValueAtTime(0.01, now + note.time + note.duration);
-                
-                osc1.start(now + note.time);
-                osc1.stop(now + note.time + note.duration);
-                
-                const osc2 = audioContext.createOscillator();
-                const gain2 = audioContext.createGain();
-                
-                osc2.connect(gain2);
-                gain2.connect(audioContext.destination);
-                
-                osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(note.freq * 1.25, now + note.time);
-                
-                gain2.gain.setValueAtTime(0, now + note.time);
-                gain2.gain.linearRampToValueAtTime(0.15, now + note.time + 0.02);
-                gain2.gain.exponentialRampToValueAtTime(0.01, now + note.time + note.duration);
-                
-                osc2.start(now + note.time);
-                osc2.stop(now + note.time + note.duration);
-            });
-        }
-
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
-            localStorage.setItem('soundEnabled', soundEnabled);
-            
-            const button = document.getElementById('soundToggle');
-            if (soundEnabled) {
-                button.textContent = '🔊';
-                button.classList.remove('muted');
-                
-                audioContext.resume();
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
-                osc.frequency.value = 800;
-                gain.gain.setValueAtTime(0.2, audioContext.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-                osc.start(audioContext.currentTime);
-                osc.stop(audioContext.currentTime + 0.2);
-            } else {
-                button.textContent = '🔇';
-                button.classList.add('muted');
-            }
-        }
-
-        window.addEventListener('load', () => {
-            const button = document.getElementById('soundToggle');
-            if (!soundEnabled) {
-                button.textContent = '🔇';
-                button.classList.add('muted');
-            }
-        });
-
-        const canvas = document.getElementById('confetti-canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        const horseCanvas = document.getElementById('horse-canvas');
-        const horseCtx = horseCanvas.getContext('2d');
-        horseCanvas.width = window.innerWidth;
-        horseCanvas.height = window.innerHeight;
-
-        const moneyCanvas = document.getElementById('money-canvas');
-        const moneyCtx = moneyCanvas.getContext('2d');
-        moneyCanvas.width = window.innerWidth;
-        moneyCanvas.height = window.innerHeight;
-
-        let confettiPieces = [];
-        let horseEmojis = [];
-        let moneyEmojis = [];
-        let animationFrame;
-        let horseAnimationFrame;
-        let moneyAnimationFrame;
-        let lastNagsValues = { carl: 0, mat: 0, phill: 0 };
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            horseCanvas.width = window.innerWidth;
-            horseCanvas.height = window.innerHeight;
-            moneyCanvas.width = window.innerWidth;
-            moneyCanvas.height = window.innerHeight;
-        });
-
-        class ConfettiPiece {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height - canvas.height;
-                this.w = Math.random() * 10 + 5;
-                this.h = Math.random() * 5 + 5;
-                this.vx = Math.random() * 2 - 1;
-                this.vy = Math.random() * 3 + 2;
-                this.rotation = Math.random() * 360;
-                this.rotationSpeed = Math.random() * 5 - 2.5;
-                this.color = ['#667eea', '#764ba2', '#f59e0b', '#dc2626', '#10b981', '#3b82f6', '#ec4899'][Math.floor(Math.random() * 7)];
-            }
-
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                this.rotation += this.rotationSpeed;
-
-                if (this.y > canvas.height) {
-                    return false;
-                }
-                return true;
-            }
-
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.rotation * Math.PI / 180);
-                ctx.fillStyle = this.color;
-                ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
-                ctx.restore();
-            }
-        }
-
-        class HorseEmoji {
-            constructor() {
-                this.x = Math.random() * horseCanvas.width;
-                this.y = Math.random() * horseCanvas.height - horseCanvas.height;
-                this.vx = Math.random() * 3 - 1.5;
-                this.vy = Math.random() * 4 + 2;
-                this.rotation = Math.random() * 360;
-                this.rotationSpeed = Math.random() * 8 - 4;
-                this.size = Math.random() * 30 + 30;
-                this.emoji = ['🐴', '🐎', '🏇', '🏆', '🥇', '🌟', '💰', '🎯'][Math.floor(Math.random() * 8)];
-                this.opacity = 1;
-            }
-
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                this.rotation += this.rotationSpeed;
-                
-                if (this.y > horseCanvas.height * 0.8) {
-                    this.opacity -= 0.02;
-                }
-                
-                if (this.y > horseCanvas.height || this.opacity <= 0) {
-                    return false;
-                }
-                return true;
-            }
-
-            draw() {
-                horseCtx.save();
-                horseCtx.translate(this.x, this.y);
-                horseCtx.rotate(this.rotation * Math.PI / 180);
-                horseCtx.globalAlpha = this.opacity;
-                horseCtx.font = `${this.size}px Arial`;
-                horseCtx.textAlign = 'center';
-                horseCtx.textBaseline = 'middle';
-                horseCtx.fillText(this.emoji, 0, 0);
-                horseCtx.restore();
-            }
-        }
-
-        class MoneyEmoji {
-            constructor() {
-                this.x = Math.random() * moneyCanvas.width;
-                this.y = Math.random() * moneyCanvas.height - moneyCanvas.height;
-                this.vx = Math.random() * 4 - 2;
-                this.vy = Math.random() * 5 + 2;
-                this.rotation = Math.random() * 360;
-                this.rotationSpeed = Math.random() * 10 - 5;
-                this.size = Math.random() * 40 + 40;
-                this.emoji = ['💰', '💵', '💴', '💶', '💷', '🤑', '💎', '🏆', '👑'][Math.floor(Math.random() * 9)];
-                this.opacity = 1;
-            }
-
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                this.rotation += this.rotationSpeed;
-                
-                if (this.y > moneyCanvas.height * 0.7) {
-                    this.opacity -= 0.015;
-                }
-                
-                if (this.y > moneyCanvas.height || this.opacity <= 0) {
-                    return false;
-                }
-                return true;
-            }
-
-            draw() {
-                moneyCtx.save();
-                moneyCtx.translate(this.x, this.y);
-                moneyCtx.rotate(this.rotation * Math.PI / 180);
-                moneyCtx.globalAlpha = this.opacity;
-                moneyCtx.font = `${this.size}px Arial`;
-                moneyCtx.textAlign = 'center';
-                moneyCtx.textBaseline = 'middle';
-                moneyCtx.fillText(this.emoji, 0, 0);
-                moneyCtx.restore();
-            }
-        }
-
-        function launchConfetti() {
-            playCelebrationSound();
-            
-            for (let i = 0; i < 150; i++) {
-                confettiPieces.push(new ConfettiPiece());
-            }
-
-            if (!animationFrame) {
-                animateConfetti();
-            }
-        }
-
-        function animateConfetti() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            confettiPieces = confettiPieces.filter(piece => {
-                piece.draw();
-                return piece.update();
-            });
-
-            if (confettiPieces.length > 0) {
-                animationFrame = requestAnimationFrame(animateConfetti);
-            } else {
-                animationFrame = null;
-            }
-        }
-
-        function launchHorseCelebration() {
-            playHorseSound();
-            
-            for (let i = 0; i < 80; i++) {
-                horseEmojis.push(new HorseEmoji());
-            }
-            
-            if (!horseAnimationFrame) {
-                animateHorses();
-            }
-        }
-
-        function animateHorses() {
-            horseCtx.clearRect(0, 0, horseCanvas.width, horseCanvas.height);
-            
-            horseEmojis = horseEmojis.filter(emoji => {
-                emoji.draw();
-                return emoji.update();
-            });
-
-            if (horseEmojis.length > 0) {
-                horseAnimationFrame = requestAnimationFrame(animateHorses);
-            } else {
-                horseAnimationFrame = null;
-            }
-        }
-
-        function launchMoneyCelebration() {
-            for (let i = 0; i < 100; i++) {
-                moneyEmojis.push(new MoneyEmoji());
-            }
-            
-            if (!moneyAnimationFrame) {
-                animateMoney();
-            }
-        }
-
-        function animateMoney() {
-            moneyCtx.clearRect(0, 0, moneyCanvas.width, moneyCanvas.height);
-            
-            moneyEmojis = moneyEmojis.filter(emoji => {
-                emoji.draw();
-                return emoji.update();
-            });
-
-            if (moneyEmojis.length > 0) {
-                moneyAnimationFrame = requestAnimationFrame(animateMoney);
-            } else {
-                moneyAnimationFrame = null;
-            }
-        }
-
-        function shareResults() {
-            let carlTotal = 0, matTotal = 0, phillTotal = 0;
-
-            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
-                const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
-                carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
-                matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
-                phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
-            });
-
-            const scores = [
-                { name: 'Carl', score: carlTotal, emoji: '🎯' },
-                { name: 'Mat', score: matTotal, emoji: '🎲' },
-                { name: 'Phill', score: phillTotal, emoji: '🎪' }
-            ];
-
-            scores.sort((a, b) => b.score - a.score);
-
-            let shareText = `Wordle & Nags Tracker 🏆\nWeek ${currentWeek}, ${currentYear}\n\n`;
-            scores.forEach((s, i) => {
-                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
-                shareText += `${medal} ${s.name}: ${s.score.toFixed(2)} ${s.emoji}\n`;
-            });
-
-            navigator.clipboard.writeText(shareText).then(() => {
-                const notification = document.getElementById('copyNotification');
-                notification.classList.add('show');
-                setTimeout(() => {
-                    notification.classList.remove('show');
-                }, 2000);
-            }).catch(() => {
-                alert('Results:\n\n' + shareText);
-            });
-        }
-
-        function finishWeek() {
-            let carlTotal = 0, matTotal = 0, phillTotal = 0;
-
-            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
-                const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
-                carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
-                matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
-                phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
-            });
-
-            const scores = [
-                { name: 'Carl', score: carlTotal },
-                { name: 'Mat', score: matTotal },
-                { name: 'Phill', score: phillTotal }
-            ];
-
-            scores.sort((a, b) => b.score - a.score);
-            const winner = scores[0];
-
-            const isTie = scores[0].score === scores[1].score;
-
-            const banner = document.getElementById('victoryBanner');
-            const winnerName = document.getElementById('winnerName');
-            const winnerScore = document.getElementById('winnerScore');
-
-            if (isTie) {
-                winnerName.textContent = 'TIE!';
-                winnerScore.textContent = `${winner.score.toFixed(2)} points each!`;
-            } else {
-                winnerName.textContent = winner.name;
-                winnerScore.textContent = `Score: ${winner.score.toFixed(2)} points`;
-                
-                if (!data.history) data.history = {};
-                data.history[`${currentYear}-${currentWeek}`] = {
-                    winner: winner.name,
-                    score: winner.score,
-                    year: currentYear,
-                    week: currentWeek
-                };
-                saveToFirebase();
-                updateHistory();
-            }
-
-            banner.classList.add('show');
-
-            playVictorySound();
-            launchConfetti();
-            launchMoneyCelebration();
-            
-            checkBadges();
-        }
-
-        function closeVictoryBanner() {
-            const banner = document.getElementById('victoryBanner');
-            banner.classList.remove('show');
-        }
-
-        function updateFinishButton() {
-            const day = document.getElementById('daySelect').value;
-            const finishSection = document.getElementById('finishSection');
-            
-            if (day === 'Friday') {
-                finishSection.classList.add('active');
-            } else {
-                finishSection.classList.remove('active');
-            }
-        }
-
-        function checkBadges() {
-            const history = data.history || {};
-            const weekKeys = Object.keys(history).sort();
-            
-            const carlHistory = [];
-            const matHistory = [];
-            const phillHistory = [];
-            
-            weekKeys.forEach(key => {
-                const winner = history[key].winner;
-                if (winner === 'Carl') carlHistory.push(key);
-                if (winner === 'Mat') matHistory.push(key);
-                if (winner === 'Phill') phillHistory.push(key);
-            });
-            
-            checkOnFireBadge(carlHistory, 'carl');
-            checkOnFireBadge(matHistory, 'mat');
-            checkOnFireBadge(phillHistory, 'phill');
-            
-            checkChampionBadge(carlHistory.length, 'carl');
-            checkChampionBadge(matHistory.length, 'mat');
-            checkChampionBadge(phillHistory.length, 'phill');
-            
-            checkWeekBadges();
-        }
-
-        function checkOnFireBadge(winHistory, person) {
-            if (winHistory.length >= 3) {
-                const last3 = winHistory.slice(-3);
-                const weeks = last3.map(k => parseInt(k.split('-')[1]));
-                if (weeks[1] === weeks[0] + 1 && weeks[2] === weeks[1] + 1) {
-                    document.getElementById('badge-onfire').classList.add('earned');
-                }
-            }
-        }
-
-        function checkChampionBadge(wins, person) {
-            if (wins >= 5) {
-                document.getElementById('badge-champion').classList.add('earned');
-            }
-        }
-
-        function checkWeekBadges() {
-            const weekData = data[`week${currentWeek}`] || {};
-            
-            let carlWordleGood = 0, matWordleGood = 0, phillWordleGood = 0;
-            let carlNagsWins = 0, matNagsWins = 0, phillNagsWins = 0;
-            
-            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
-                const dayData = weekData[day] || defaultData[day];
-                
-                if (dayData.carl.wordle && parseInt(dayData.carl.wordle) <= 3) carlWordleGood++;
-                if (dayData.mat.wordle && parseInt(dayData.mat.wordle) <= 3) matWordleGood++;
-                if (dayData.phill.wordle && parseInt(dayData.phill.wordle) <= 3) phillWordleGood++;
-                
-                const carlNags = fractionToDecimal(dayData.carl.nags);
-                const matNags = fractionToDecimal(dayData.mat.nags);
-                const phillNags = fractionToDecimal(dayData.phill.nags);
-                
-                if (carlNags >= 5) carlNagsWins++;
-                if (matNags >= 5) matNagsWins++;
-                if (phillNags >= 5) phillNagsWins++;
-            });
-            
-            if (carlWordleGood >= 5 || matWordleGood >= 5 || phillWordleGood >= 5) {
-                document.getElementById('badge-wordsmith').classList.add('earned');
-            }
-            
-            if (carlNagsWins >= 3 || matNagsWins >= 3 || phillNagsWins >= 3) {
-                document.getElementById('badge-highroller').classList.add('earned');
-            }
-        }
-
-        function updateHistory() {
-            const history = data.history || {};
-            const historyContent = document.getElementById('historyContent');
-            
-            if (Object.keys(history).length === 0) {
-                historyContent.innerHTML = '<p style="text-align: center; color: var(--text-secondary); font-size: 12px;">No completed weeks yet</p>';
-                return;
-            }
-            
-            const wins = { Carl: 0, Mat: 0, Phill: 0 };
-            const weekKeys = Object.keys(history).sort().reverse();
-            
-            let html = '';
-            weekKeys.slice(0, 5).forEach(key => {
-                const h = history[key];
-                wins[h.winner] = (wins[h.winner] || 0) + 1;
-                html += `
-                    <div class="history-item">
-                        <span class="history-week">Week ${h.week}, ${h.year}</span>
-                        <span class="history-winner">${h.winner} - ${h.score.toFixed(2)}</span>
-                    </div>
-                `;
-            });
-            
-            const standings = Object.entries(wins).sort((a, b) => b[1] - a[1]);
-            html += '<div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--border-color);">';
-            html += '<p style="text-align: center; font-weight: 700; color: var(--text-primary); margin-bottom: 10px;">Overall Wins</p>';
-            standings.forEach(([name, count]) => {
-                html += `<p style="text-align: center; color: var(--text-secondary); font-size: 13px;">${name}: ${count}</p>`;
-            });
-            html += '</div>';
-            
-            historyContent.innerHTML = html;
-        }
-
-        function updateLeaderboard() {
-            let carlTotal = 0, matTotal = 0, phillTotal = 0;
-
-            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
-                const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
-                carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
-                matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
-                phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
-            });
-
-            const scores = [
-                { name: 'carl', total: carlTotal },
-                { name: 'mat', total: matTotal },
-                { name: 'phill', total: phillTotal }
-            ];
-
-            scores.sort((a, b) => b.total - a.total);
-
-            ['carl', 'mat', 'phill'].forEach(name => {
-                const card = document.getElementById(`total-card-${name}`);
-                card.className = 'total-card';
-                const existingCrown = card.querySelector('.crown');
-                if (existingCrown) existingCrown.remove();
-            });
-
-            scores.forEach((s, i) => {
-                const card = document.getElementById(`total-card-${s.name}`);
-                if (i === 0) {
-                    card.classList.add('first-place');
-                    const crown = document.createElement('div');
-                    crown.className = 'crown';
-                    crown.textContent = '👑';
-                    card.appendChild(crown);
-                } else if (i === 1) {
-                    card.classList.add('second-place');
-                } else {
-                    card.classList.add('third-place');
-                }
-            });
-        }
-
-        const defaultData = {
-            Monday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
-            Tuesday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
-            Wednesday: { 
-                carl: { wordle: '', nags: '' }, 
-                mat: { wordle: '', nags: '' }, 
-                phill: { wordle: '', nags: '' },
-                word: '',
-                meetingTime: '',
-                meetingDetails: ''
-            },
-            Thursday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } },
-            Friday: { carl: { wordle: '', nags: '' }, mat: { wordle: '', nags: '' }, phill: { wordle: '', nags: '' } }
-        };
-
-        let data = {};
-        let isUpdatingFromFirebase = false;
-
-        dataRef.on('value', (snapshot) => {
-            const firebaseData = snapshot.val();
-            if (firebaseData) {
-                isUpdatingFromFirebase = true;
-                data = firebaseData;
-                loadWeekData();
-                updateHistory();
-                checkBadges();
-                isUpdatingFromFirebase = false;
-                updateSyncStatus('✓ Synced');
-            } else {
-                data = { [`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)) };
-                dataRef.set(data);
-            }
-        });
-
-        function loadWeekData() {
-            if (!data[`week${currentWeek}`]) {
-                data[`week${currentWeek}`] = JSON.parse(JSON.stringify(defaultData));
-            }
-            loadDayData();
-        }
-
-        function updateSyncStatus(message) {
-            const status = document.getElementById('syncStatus');
-            status.textContent = message;
-            if (message.includes('✓')) {
-                status.style.color = '#10b981';
-                setTimeout(() => {
-                    status.textContent = '';
-                }, 2000);
-            }
-        }
-
-        function saveToFirebase() {
-            if (!isUpdatingFromFirebase) {
-                dataRef.set(data).then(() => {
-                    updateSyncStatus('✓ Synced to cloud');
-                }).catch((error) => {
-                    updateSyncStatus('⚠️ Sync error');
-                    console.error('Firebase save error:', error);
-                });
-            }
-        }
-
-        function saveWednesdayData() {
-            const weekKey = `week${currentWeek}`;
-            if (!data[weekKey].Wednesday.word) data[weekKey].Wednesday.word = '';
-            if (!data[weekKey].Wednesday.meetingTime) data[weekKey].Wednesday.meetingTime = '';
-            if (!data[weekKey].Wednesday.meetingDetails) data[weekKey].Wednesday.meetingDetails = '';
-            
-            data[weekKey].Wednesday.word = document.getElementById('wednesday-word').value || '';
-            data[weekKey].Wednesday.meetingTime = document.getElementById('wednesday-meeting-time').value || '';
-            data[weekKey].Wednesday.meetingDetails = document.getElementById('wednesday-meeting-details').value || '';
-            
-            saveToFirebase();
-        }
-
-        function updateWednesdaySection() {
-            const day = document.getElementById('daySelect').value;
-            const wednesdaySection = document.getElementById('wednesdaySection');
-            const weekKey = `week${currentWeek}`;
-            
-            if (day === 'Wednesday') {
-                wednesdaySection.classList.add('active');
-                const wedData = data[weekKey]?.Wednesday || defaultData.Wednesday;
-                document.getElementById('wednesday-word').value = wedData.word || '';
-                document.getElementById('wednesday-meeting-time').value = wedData.meetingTime || '';
-                document.getElementById('wednesday-meeting-details').value = wedData.meetingDetails || '';
-            } else {
-                wednesdaySection.classList.remove('active');
-            }
-        }
-
-        function fractionToDecimal(input) {
-            if (!input || input === '' || input === '0') return 0;
-
-            input = input.toString().trim();
-
-            if (!isNaN(input)) {
-                return parseFloat(input);
-            }
-
-            const wholeAndFraction = input.match(/^(\d+)\s+(\d+)\/(\d+)$/);
-            if (wholeAndFraction) {
-                const whole = parseInt(wholeAndFraction[1]);
-                const numerator = parseInt(wholeAndFraction[2]);
-                const denominator = parseInt(wholeAndFraction[3]);
-                return whole + (numerator / denominator);
-            }
-
-            const justFraction = input.match(/^(\d+)\/(\d+)$/);
-            if (justFraction) {
-                const numerator = parseInt(justFraction[1]);
-                const denominator = parseInt(justFraction[2]);
-                return numerator / denominator;
-            }
-
-            return 0;
-        }
-
-        function handleWordleInput(person) {
-            const value = document.getElementById(`${person}-wordle`).value;
-
-            if (value === '1') {
-                launchConfetti();
-            }
-
-            calculateTotals();
-        }
-
-        function checkFridayCompletion() {
-            const day = document.getElementById('daySelect').value;
-            const weekKey = `week${currentWeek}`;
-
-            if (day === 'Friday') {
-                const fridayData = data[weekKey]?.Friday || defaultData.Friday;
-                const carlWordle = fridayData.carl.wordle;
-                const matWordle = fridayData.mat.wordle;
-                const phillWordle = fridayData.phill.wordle;
-
-                if (carlWordle !== '' && matWordle !== '' && phillWordle !== '') {
-                    launchConfetti();
-                }
-            }
-        }
-
-        function updateNagsDecimal(person) {
-            const input = document.getElementById(`${person}-nags`).value;
-            const decimal = fractionToDecimal(input);
-            const displayElement = document.getElementById(`${person}-nags-decimal`);
-
-            if (input && input !== '' && input !== '0') {
-                displayElement.textContent = `= ${decimal.toFixed(2)}`;
-            } else {
-                displayElement.textContent = '';
-            }
-
-            if (decimal >= 5.0 && decimal > lastNagsValues[person]) {
-                launchHorseCelebration();
-            }
-
-            lastNagsValues[person] = decimal;
-
-            calculateTotals();
-        }
-
-        function showSaveIndicator() {
-            const indicator = document.getElementById('saveIndicator');
-            indicator.textContent = '✓ Saved';
-            setTimeout(() => {
-                indicator.textContent = '';
-            }, 2000);
-        }
-
-        function calculateDailyTotal(wordle, nags, day) {
-            if ((!wordle || wordle === '' || wordle === 0) && (!nags || nags === '' || nags === '0')) {
-                return 0;
-            }
-
-            const wordleNum = parseFloat(wordle || 0);
-            const nagsDecimal = fractionToDecimal(nags);
-
-            let wordleScore = 0;
-            if (wordleNum > 0) {
-                wordleScore = (wordleNum === 1) ? 10 : (7 - wordleNum);
-            }
-
-            const nagsScore = (nagsDecimal === 0) ? 0 : (nagsDecimal + 1);
-
-            let total = wordleScore + nagsScore;
-
-            if (day === 'Friday') {
-                total = total * 2;
-            }
-
-            return total;
-        }
-
-        function updateFridayBanner() {
-            const day = document.getElementById('daySelect').value;
-            const banner = document.getElementById('fridayBanner');
-            const dailyTotals = document.querySelectorAll('.person-daily-total');
-
-            if (day === 'Friday') {
-                banner.classList.add('active');
-                dailyTotals.forEach(total => total.classList.add('friday-bonus'));
-            } else {
-                banner.classList.remove('active');
-                dailyTotals.forEach(total => total.classList.remove('friday-bonus'));
-            }
-        }
-
-        function loadDayData() {
-            const day = document.getElementById('daySelect').value;
-            const weekKey = `week${currentWeek}`;
-            const dayData = data[weekKey]?.[day] || defaultData[day];
-
-            updateFridayBanner();
-            updateWednesdaySection();
-            updateFinishButton();
-
-            document.getElementById('carl-wordle').value = dayData.carl.wordle || '';
-            document.getElementById('carl-nags').value = dayData.carl.nags || '';
-            lastNagsValues.carl = fractionToDecimal(dayData.carl.nags);
-            updateNagsDecimal('carl');
-
-            document.getElementById('mat-wordle').value = dayData.mat.wordle || '';
-            document.getElementById('mat-nags').value = dayData.mat.nags || '';
-            lastNagsValues.mat = fractionToDecimal(dayData.mat.nags);
-            updateNagsDecimal('mat');
-
-            document.getElementById('phill-wordle').value = dayData.phill.wordle || '';
-            document.getElementById('phill-nags').value = dayData.phill.nags || '';
-            lastNagsValues.phill = fractionToDecimal(dayData.phill.nags);
-            updateNagsDecimal('phill');
-
-            calculateTotals();
-        }
-
-        function saveDayData() {
-            const day = document.getElementById('daySelect').value;
-            const weekKey = `week${currentWeek}`;
-
-            if (!data[weekKey]) {
-                data[weekKey] = JSON.parse(JSON.stringify(defaultData));
-            }
-
-            if (day === 'Wednesday') {
-                data[weekKey][day] = {
-                    carl: {
-                        wordle: document.getElementById('carl-wordle').value || '',
-                        nags: document.getElementById('carl-nags').value || ''
-                    },
-                    mat: {
-                        wordle: document.getElementById('mat-wordle').value || '',
-                        nags: document.getElementById('mat-nags').value || ''
-                    },
-                    phill: {
-                        wordle: document.getElementById('phill-wordle').value || '',
-                        nags: document.getElementById('phill-nags').value || ''
-                    },
-                    word: data[weekKey].Wednesday?.word || '',
-                    meetingTime: data[weekKey].Wednesday?.meetingTime || '',
-                    meetingDetails: data[weekKey].Wednesday?.meetingDetails || ''
-                };
-            } else {
-                data[weekKey][day] = {
-                    carl: {
-                        wordle: document.getElementById('carl-wordle').value || '',
-                        nags: document.getElementById('carl-nags').value || ''
-                    },
-                    mat: {
-                        wordle: document.getElementById('mat-wordle').value || '',
-                        nags: document.getElementById('mat-nags').value || ''
-                    },
-                    phill: {
-                        wordle: document.getElementById('phill-wordle').value || '',
-                        nags: document.getElementById('phill-nags').value || ''
-                    }
-                };
-            }
-
-            saveToFirebase();
-            checkFridayCompletion();
-        }
-
-        function calculateTotals() {
-            saveDayData();
-
-            const day = document.getElementById('daySelect').value;
-            const weekKey = `week${currentWeek}`;
-            const dayData = data[weekKey]?.[day] || defaultData[day];
-
-            const carlDaily = calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, day);
-            const matDaily = calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, day);
-            const phillDaily = calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, day);
-
-            document.getElementById('carl-daily').textContent = carlDaily.toFixed(2);
-            document.getElementById('mat-daily').textContent = matDaily.toFixed(2);
-            document.getElementById('phill-daily').textContent = phillDaily.toFixed(2);
-
-            let carlTotal = 0, matTotal = 0, phillTotal = 0;
-
-            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
-                const dData = data[weekKey]?.[d] || defaultData[d];
-                carlTotal += calculateDailyTotal(dData.carl.wordle, dData.carl.nags, d);
-                matTotal += calculateDailyTotal(dData.mat.wordle, dData.mat.nags, d);
-                phillTotal += calculateDailyTotal(dData.phill.wordle, dData.phill.nags, d);
-            });
-
-            document.getElementById('carl-total').textContent = carlTotal.toFixed(2);
-            document.getElementById('mat-total').textContent = matTotal.toFixed(2);
-            document.getElementById('phill-total').textContent = phillTotal.toFixed(2);
-
-            updateLeaderboard();
-        }
-
-        window.onload = function() {
-            updateSyncStatus('🔄 Loading...');
-            updateWeekDisplay();
-        };
-    </script>
+function resetData() {
+const passwordPrompt = document.createElement('div');
+passwordPrompt.style.cssText = `
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: rgba(0, 0, 0, 0.8);
+display: flex;
+justify-content: center;
+align-items: center;
+z-index: 10003;
+`;
+passwordPrompt.innerHTML = `
+<div style="
+background: var(--container-bg);
+padding: 30px;
+border-radius: 16px;
+box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+max-width: 400px;
+width: 90%;
+">
+<h3 style="color: var(--text-primary); margin-bottom: 15px; text-align: center;">
+🔒 Reset Data
+</h3>
+<p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center; font-size: 14px;">
+This action will delete ALL data for ALL users. Please enter the password to continue.
+</p>
+<input
+type="password"
+id="resetPasswordInput"
+placeholder="Enter password"
+style="
+width: 100%;
+padding: 12px;
+border: 2px solid var(--input-border);
+border-radius: 8px;
+font-size: 15px;
+margin-bottom: 15px;
+background: var(--container-bg);
+color: var(--text-primary);
+"
+>
+<div style="display: flex; gap: 10px;">
+<button
+onclick="closePasswordPrompt()"
+style="
+flex: 1;
+padding: 12px;
+background: #6b7280;
+color: white;
+border: none;
+border-radius: 8px;
+font-weight: 600;
+cursor: pointer;
+font-size: 14px;
+"
+>
+Cancel
+</button>
+<button
+onclick="confirmReset()"
+style="
+flex: 1;
+padding: 12px;
+background: #ef4444;
+color: white;
+border: none;
+border-radius: 8px;
+font-weight: 600;
+cursor: pointer;
+font-size: 14px;
+"
+>
+Reset All
+</button>
+</div>
+<p id="passwordError" style="
+color: #ef4444;
+font-size: 12px;
+margin-top: 10px;
+text-align: center;
+display: none;
+">
+❌ Incorrect password
+</p>
+</div>
+`;
+document.body.appendChild(passwordPrompt);
+setTimeout(() => {
+document.getElementById('resetPasswordInput').focus();
+}, 100);
+document.getElementById('resetPasswordInput').addEventListener('keypress', function(e) {
+if (e.key === 'Enter') {
+confirmReset();
+}
+});
+}
+
+function closePasswordPrompt() {
+const prompt = document.body.querySelector('[style*="rgba(0, 0, 0, 0.8)"]');
+if (prompt) {
+document.body.removeChild(prompt);
+}
+}
+
+function confirmReset() {
+const inputPassword = document.getElementById('resetPasswordInput').value;
+const errorMsg = document.getElementById('passwordError');
+if (validateResetPassword(inputPassword)) {
+closePasswordPrompt();
+if (confirm('⚠️ FINAL WARNING: This will permanently delete ALL data for ALL weeks and ALL users. Are you absolutely sure?')) {
+data = {
+[`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)),
+history: {}
+};
+lastNagsValues = { carl: 0, mat: 0, phill: 0 };
+saveToFirebase();
+loadDayData();
+updateHistory();
+const notification = document.createElement('div');
+notification.style.cssText = `
+position: fixed;
+top: 20px;
+left: 50%;
+transform: translateX(-50%);
+background: #ef4444;
+color: white;
+padding: 15px 30px;
+border-radius: 10px;
+font-weight: 600;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+z-index: 10004;
+`;
+notification.textContent = '🗑️ All data has been reset!';
+document.body.appendChild(notification);
+setTimeout(() => {
+document.body.removeChild(notification);
+}, 3000);
+}
+} else {
+errorMsg.style.display = 'block';
+document.getElementById('resetPasswordInput').value = '';
+document.getElementById('resetPasswordInput').focus();
+const input = document.getElementById('resetPasswordInput');
+input.style.animation = 'shake 0.3s';
+setTimeout(() => {
+input.style.animation = '';
+}, 300);
+}
+}
+
+let currentWeek = getCurrentWeekNumber();
+let currentYear = new Date().getFullYear();
+let theme = localStorage.getItem('theme') || 'light';
+document.documentElement.setAttribute('data-theme', theme);
+if (theme === 'dark') {
+document.getElementById('themeToggle').textContent = '☀️';
+}
+
+function getCurrentWeekNumber() {
+const now = new Date();
+const target = new Date(now.valueOf());
+const dayNumber = (now.getDay() + 6) % 7;
+target.setDate(target.getDate() - dayNumber + 3);
+const firstThursday = target.valueOf();
+target.setMonth(0, 1);
+if (target.getDay() !== 4) {
+target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+}
+return 1 + Math.ceil((firstThursday - target) / 604800000);
+}
+
+function changeWeek(direction) {
+currentWeek += direction;
+if (currentWeek < 1) {
+currentWeek = 52;
+currentYear--;
+} else if (currentWeek > 52) {
+currentWeek = 1;
+currentYear++;
+}
+updateWeekDisplay();
+loadWeekData();
+}
+
+function updateWeekDisplay() {
+document.getElementById('weekInfo').textContent = `Week ${currentWeek}, ${currentYear}`;
+const thisWeek = getCurrentWeekNumber();
+const thisYear = new Date().getFullYear();
+const isCurrentWeek = (currentWeek === thisWeek && currentYear === thisYear);
+const isFutureWeek = (currentYear > thisYear) || (currentYear === thisYear && currentWeek > thisWeek);
+document.getElementById('nextWeekBtn').disabled = isCurrentWeek || isFutureWeek;
+}
+
+function toggleTheme() {
+theme = theme === 'light' ? 'dark' : 'light';
+document.documentElement.setAttribute('data-theme', theme);
+localStorage.setItem('theme', theme);
+const btn = document.getElementById('themeToggle');
+btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioContext = new AudioContext();
+
+function playCelebrationSound() {
+if (!soundEnabled) return;
+audioContext.resume();
+const now = audioContext.currentTime;
+[0, 0.08, 0.16, 0.24].forEach((delay, i) => {
+const osc = audioContext.createOscillator();
+const gain = audioContext.createGain();
+osc.connect(gain);
+gain.connect(audioContext.destination);
+const notes = [523.25, 659.25, 783.99, 1046.50];
+osc.frequency.setValueAtTime(notes[i], now + delay);
+osc.type = 'sine';
+gain.gain.setValueAtTime(0, now + delay);
+gain.gain.linearRampToValueAtTime(0.3, now + delay + 0.01);
+gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.3);
+osc.start(now + delay);
+osc.stop(now + delay + 0.3);
+});
+}
+
+function playHorseSound() {
+if (!soundEnabled) return;
+audioContext.resume();
+const now = audioContext.currentTime;
+[0, 0.12, 0.24, 0.36].forEach((delay) => {
+const osc = audioContext.createOscillator();
+const gain = audioContext.createGain();
+osc.connect(gain);
+gain.connect(audioContext.destination);
+osc.type = 'square';
+osc.frequency.setValueAtTime(80, now + delay);
+osc.frequency.exponentialRampToValueAtTime(40, now + delay + 0.05);
+gain.gain.setValueAtTime(0.3, now + delay);
+gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.05);
+osc.start(now + delay);
+osc.stop(now + delay + 0.05);
+});
+setTimeout(() => {
+const trumpet = audioContext.createOscillator();
+const trumpetGain = audioContext.createGain();
+const now = audioContext.currentTime;
+trumpet.connect(trumpetGain);
+trumpetGain.connect(audioContext.destination);
+trumpet.type = 'sawtooth';
+const melody = [
+{ freq: 392, time: 0, duration: 0.15 },
+{ freq: 523.25, time: 0.15, duration: 0.15 },
+{ freq: 659.25, time: 0.3, duration: 0.25 },
+{ freq: 783.99, time: 0.55, duration: 0.4 }
+];
+melody.forEach(note => {
+trumpet.frequency.setValueAtTime(note.freq, now + note.time);
+});
+trumpetGain.gain.setValueAtTime(0, now);
+trumpetGain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+trumpetGain.gain.setValueAtTime(0.25, now + 0.8);
+trumpetGain.gain.exponentialRampToValueAtTime(0.01, now + 1);
+trumpet.start(now);
+trumpet.stop(now + 1);
+}, 500);
+}
+
+function playVictorySound() {
+if (!soundEnabled) return;
+audioContext.resume();
+const now = audioContext.currentTime;
+const fanfare = [
+{ freq: 523.25, time: 0, duration: 0.2 },
+{ freq: 659.25, time: 0.2, duration: 0.2 },
+{ freq: 783.99, time: 0.4, duration: 0.3 },
+{ freq: 1046.50, time: 0.7, duration: 0.5 },
+{ freq: 783.99, time: 1.2, duration: 0.2 },
+{ freq: 1046.50, time: 1.4, duration: 0.6 }
+];
+fanfare.forEach(note => {
+const osc1 = audioContext.createOscillator();
+const gain1 = audioContext.createGain();
+osc1.connect(gain1);
+gain1.connect(audioContext.destination);
+osc1.type = 'sawtooth';
+osc1.frequency.setValueAtTime(note.freq, now + note.time);
+gain1.gain.setValueAtTime(0, now + note.time);
+gain1.gain.linearRampToValueAtTime(0.3, now + note.time + 0.02);
+gain1.gain.setValueAtTime(0.3, now + note.time + note.duration - 0.1);
+gain1.gain.exponentialRampToValueAtTime(0.01, now + note.time + note.duration);
+osc1.start(now + note.time);
+osc1.stop(now + note.time + note.duration);
+const osc2 = audioContext.createOscillator();
+const gain2 = audioContext.createGain();
+osc2.connect(gain2);
+gain2.connect(audioContext.destination);
+osc2.type = 'sine';
+osc2.frequency.setValueAtTime(note.freq * 1.25, now + note.time);
+gain2.gain.setValueAtTime(0, now + note.time);
+gain2.gain.linearRampToValueAtTime(0.15, now + note.time + 0.02);
+gain2.gain.exponentialRampToValueAtTime(0.01, now + note.time + note.duration);
+osc2.start(now + note.time);
+osc2.stop(now + note.time + note.duration);
+});
+}
+
+function toggleSound() {
+soundEnabled = !soundEnabled;
+localStorage.setItem('soundEnabled', soundEnabled);
+const button = document.getElementById('soundToggle');
+if (soundEnabled) {
+button.textContent = '🔊';
+button.classList.remove('muted');
+audioContext.resume();
+const osc = audioContext.createOscillator();
+const gain = audioContext.createGain();
+osc.connect(gain);
+gain.connect(audioContext.destination);
+osc.frequency.value = 800;
+gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+osc.start(audioContext.currentTime);
+osc.stop(audioContext.currentTime + 0.2);
+} else {
+button.textContent = '🔇';
+button.classList.add('muted');
+}
+}
+
+window.addEventListener('load', () => {
+const button = document.getElementById('soundToggle');
+if (!soundEnabled) {
+button.textContent = '🔇';
+button.classList.add('muted');
+}
+});
+
+const canvas = document.getElementById('confetti-canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+const horseCanvas = document.getElementById('horse-canvas');
+const horseCtx = horseCanvas.getContext('2d');
+horseCanvas.width = window.innerWidth;
+horseCanvas.height = window.innerHeight;
+const moneyCanvas = document.getElementById('money-canvas');
+const moneyCtx = moneyCanvas.getContext('2d');
+moneyCanvas.width = window.innerWidth;
+moneyCanvas.height = window.innerHeight;
+let confettiPieces = [];
+let horseEmojis = [];
+let moneyEmojis = [];
+let animationFrame;
+let horseAnimationFrame;
+let moneyAnimationFrame;
+let lastNagsValues = { carl: 0, mat: 0, phill: 0 };
+
+window.addEventListener('resize', () => {
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+horseCanvas.width = window.innerWidth;
+horseCanvas.height = window.innerHeight;
+moneyCanvas.width = window.innerWidth;
+moneyCanvas.height = window.innerHeight;
+});
+
+class ConfettiPiece {
+constructor() {
+this.x = Math.random() * canvas.width;
+this.y = Math.random() * canvas.height - canvas.height;
+this.w = Math.random() * 10 + 5;
+this.h = Math.random() * 5 + 5;
+this.vx = Math.random() * 2 - 1;
+this.vy = Math.random() * 3 + 2;
+this.rotation = Math.random() * 360;
+this.rotationSpeed = Math.random() * 5 - 2.5;
+this.color = ['#667eea', '#764ba2', '#f59e0b', '#dc2626', '#10b981', '#3b82f6', '#ec4899'][Math.floor(Math.random() * 7)];
+}
+update() {
+this.x += this.vx;
+this.y += this.vy;
+this.rotation += this.rotationSpeed;
+if (this.y > canvas.height) {
+return false;
+}
+return true;
+}
+draw() {
+ctx.save();
+ctx.translate(this.x, this.y);
+ctx.rotate(this.rotation * Math.PI / 180);
+ctx.fillStyle = this.color;
+ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+ctx.restore();
+}
+}
+
+class HorseEmoji {
+constructor() {
+this.x = Math.random() * horseCanvas.width;
+this.y = Math.random() * horseCanvas.height - horseCanvas.height;
+this.vx = Math.random() * 3 - 1.5;
+this.vy = Math.random() * 4 + 2;
+this.rotation = Math.random() * 360;
+this.rotationSpeed = Math.random() * 8 - 4;
+this.size = Math.random() * 30 + 30;
+this.emoji = ['🐴', '🐎', '🏇', '🏆', '🥇', '🌟', '💰', '🎯'][Math.floor(Math.random() * 8)];
+this.opacity = 1;
+}
+update() {
+this.x += this.vx;
+this.y += this.vy;
+this.rotation += this.rotationSpeed;
+if (this.y > horseCanvas.height * 0.8) {
+this.opacity -= 0.02;
+}
+if (this.y > horseCanvas.height || this.opacity <= 0) {
+return false;
+}
+return true;
+}
+draw() {
+horseCtx.save();
+horseCtx.translate(this.x, this.y);
+horseCtx.rotate(this.rotation * Math.PI / 180);
+horseCtx.globalAlpha = this.opacity;
+horseCtx.font = `${this.size}px Arial`;
+horseCtx.textAlign = 'center';
+horseCtx.textBaseline = 'middle';
+horseCtx.fillText(this.emoji, 0, 0);
+horseCtx.restore();
+}
+}
+
+class MoneyEmoji {
+constructor() {
+this.x = Math.random() * moneyCanvas.width;
+this.y = Math.random() * moneyCanvas.height - moneyCanvas.height;
+this.vx = Math.random() * 4 - 2;
+this.vy = Math.random() * 5 + 2;
+this.rotation = Math.random() * 360;
+this.rotationSpeed = Math.random() * 10 - 5;
+this.size = Math.random() * 40 + 40;
+this.emoji = ['💰', '💵', '💴', '💶', '💷', '🤑', '💎', '🏆', '👑'][Math.floor(Math.random() * 9)];
+this.opacity = 1;
+}
+update() {
+this.x += this.vx;
+this.y += this.vy;
+this.rotation += this.rotationSpeed;
+if (this.y > moneyCanvas.height * 0.7) {
+this.opacity -= 0.015;
+}
+if (this.y > moneyCanvas.height || this.opacity <= 0) {
+return false;
+}
+return true;
+}
+draw() {
+moneyCtx.save();
+moneyCtx.translate(this.x, this.y);
+moneyCtx.rotate(this.rotation * Math.PI / 180);
+moneyCtx.globalAlpha = this.opacity;
+moneyCtx.font = `${this.size}px Arial`;
+moneyCtx.textAlign = 'center';
+moneyCtx.textBaseline = 'middle';
+moneyCtx.fillText(this.emoji, 0, 0);
+moneyCtx.restore();
+}
+}
+
+function launchConfetti() {
+playCelebrationSound();
+for (let i = 0; i < 150; i++) {
+confettiPieces.push(new ConfettiPiece());
+}
+if (!animationFrame) {
+animateConfetti();
+}
+}
+
+function animateConfetti() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+confettiPieces = confettiPieces.filter(piece => {
+piece.draw();
+return piece.update();
+});
+if (confettiPieces.length > 0) {
+animationFrame = requestAnimationFrame(animateConfetti);
+} else {
+animationFrame = null;
+}
+}
+
+function launchHorseCelebration() {
+playHorseSound();
+for (let i = 0; i < 80; i++) {
+horseEmojis.push(new HorseEmoji());
+}
+if (!horseAnimationFrame) {
+animateHorses();
+}
+}
+
+function animateHorses() {
+horseCtx.clearRect(0, 0, horseCanvas.width, horseCanvas.height);
+horseEmojis = horseEmojis.filter(emoji => {
+emoji.draw();
+return emoji.update();
+});
+if (horseEmojis.length > 0) {
+horseAnimationFrame = requestAnimationFrame(animateHorses);
+} else {
+horseAnimationFrame = null;
+}
+}
+
+function launchMoneyCelebration() {
+for (let i = 0; i < 100; i++) {
+moneyEmojis.push(new MoneyEmoji());
+}
+if (!moneyAnimationFrame) {
+animateMoney();
+}
+}
+
+function animateMoney() {
+moneyCtx.clearRect(0, 0, moneyCanvas.width, moneyCanvas.height);
+moneyEmojis = moneyEmojis.filter(emoji => {
+emoji.draw();
+return emoji.update();
+});
+if (moneyEmojis.length > 0) {
+moneyAnimationFrame = requestAnimationFrame(animateMoney);
+} else {
+moneyAnimationFrame = null;
+}
+}
+
+function shareResults() {
+let carlTotal = 0, matTotal = 0, phillTotal = 0;
+['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
+const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
+carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
+matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
+phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
+});
+const scores = [
+{ name: 'Carl', score: carlTotal, emoji: '🎯' },
+{ name: 'Mat', score: matTotal, emoji: '🎲' },
+{ name: 'Phill', score: phillTotal, emoji: '🎪' }
+];
+scores.sort((a, b) => b.score - a.score);
+let shareText = `Wordle & Nags Tracker 🏆\nWeek ${currentWeek}, ${currentYear}\n\n`;
+scores.forEach((s, i) => {
+const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+shareText += `${medal} ${s.name}: ${s.score.toFixed(2)} ${s.emoji}\n`;
+});
+navigator.clipboard.writeText(shareText).then(() => {
+const notification = document.getElementById('copyNotification');
+notification.classList.add('show');
+setTimeout(() => {
+notification.classList.remove('show');
+}, 2000);
+}).catch(() => {
+alert('Results:\n\n' + shareText);
+});
+}
+
+function finishWeek() {
+let carlTotal = 0, matTotal = 0, phillTotal = 0;
+['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
+const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
+carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
+matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
+phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
+});
+const scores = [
+{ name: 'Carl', score: carlTotal },
+{ name: 'Mat', score: matTotal },
+{ name: 'Phill', score: phillTotal }
+];
+scores.sort((a, b) => b.score - a.score);
+const winner = scores[0];
+const isTie = scores[0].score === scores[1].score;
+const banner = document.getElementById('victoryBanner');
+const winnerName = document.getElementById('winnerName');
+const winnerScore = document.getElementById('winnerScore');
+if (isTie) {
+winnerName.textContent = 'TIE!';
+winnerScore.textContent = `${winner.score.toFixed(2)} points each!`;
+} else {
+winnerName.textContent = winner.name;
+winnerScore.textContent = `Score: ${winner.score.toFixed(2)} points`;
+if (!data.history) data.history = {};
+data.history[`${currentYear}-${currentWeek}`] = {
+winner: winner.name,
+score: winner.score,
+year: currentYear,
+week: currentWeek
+};
+saveToFirebase();
+updateHistory();
+}
+banner.classList.add('show');
+playVictorySound();
+launchConfetti();
+launchMoneyCelebration();
+checkBadges();
+}
+
+function closeVictoryBanner() {
+const banner = document.getElementById('victoryBanner');
+banner.classList.remove('show');
+}
+
+function updateFinishButton() {
+const day = document.getElementById('daySelect').value;
+const finishSection = document.getElementById('finishSection');
+if (day === 'Friday') {
+finishSection.classList.add('active');
+} else {
+finishSection.classList.remove('active');
+}
+}
+
+function checkBadges() {
+const history = data.history || {};
+const weekKeys = Object.keys(history).sort();
+const carlHistory = [];
+const matHistory = [];
+const phillHistory = [];
+weekKeys.forEach(key => {
+const winner = history[key].winner;
+if (winner === 'Carl') carlHistory.push(key);
+if (winner === 'Mat') matHistory.push(key);
+if (winner === 'Phill') phillHistory.push(key);
+});
+checkOnFireBadge(carlHistory, 'carl');
+checkOnFireBadge(matHistory, 'mat');
+checkOnFireBadge(phillHistory, 'phill');
+checkChampionBadge(carlHistory.length, 'carl');
+checkChampionBadge(matHistory.length, 'mat');
+checkChampionBadge(phillHistory.length, 'phill');
+checkWeekBadges();
+}
+
+function checkOnFireBadge(winHistory, person) {
+if (winHistory.length >= 3) {
+const last3 = winHistory.slice(-3);
+const weeks = last3.map(k => parseInt(k.split('-')[1]));
+if (weeks[1] === weeks[0] + 1 && weeks[2] === weeks[1] + 1) {
+document.getElementById('badge-onfire').classList.add('earned');
+}
+}
+}
+
+function checkChampionBadge(wins, person) {
+if (wins >= 5) {
+document.getElementById('badge-champion').classList.add('earned');
+}
+}
+
+function checkWeekBadges() {
+const weekData = data[`week${currentWeek}`] || {};
+let carlWordleGood = 0, matWordleGood = 0, phillWordleGood = 0;
+let carlNagsWins = 0, matNagsWins = 0, phillNagsWins = 0;
+['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
+const dayData = weekData[day] || defaultData[day];
+if (dayData.carl.wordle && parseInt(dayData.carl.wordle) <= 3) carlWordleGood++;
+if (dayData.mat.wordle && parseInt(dayData.mat.wordle) <= 3) matWordleGood++;
+if (dayData.phill.wordle && parseInt(dayData.phill.wordle) <= 3) phillWordleGood++;
+const carlNags = fractionToDecimal(dayData.carl.nags);
+const matNags = fractionToDecimal(dayData.mat.nags);
+const phillNags = fractionToDecimal(dayData.phill.nags);
+if (carlNags >= 5) carlNagsWins++;
+if (matNags >= 5) matNagsWins++;
+if (phillNags >= 5) phillNagsWins++;
+});
+if (carlWordleGood >= 5 || matWordleGood >= 5 || phillWordleGood >= 5) {
+document.getElementById('badge-wordsmith').classList.add('earned');
+}
+if (carlNagsWins >= 3 || matNagsWins >= 3 || phillNagsWins >= 3) {
+document.getElementById('badge-highroller').classList.add('earned');
+}
+}
+
+function updateHistory() {
+const history = data.history || {};
+const historyContent = document.getElementById('historyContent');
+if (Object.keys(history).length === 0) {
+historyContent.innerHTML = '<p style="text-align: center; color: var(--text-secondary); font-size: 12px;">No completed weeks yet</p>';
+return;
+}
+const wins = { Carl: 0, Mat: 0, Phill: 0 };
+const weekKeys = Object.keys(history).sort().reverse();
+let html = '';
+weekKeys.slice(0, 5).forEach(key => {
+const h = history[key];
+wins[h.winner] = (wins[h.winner] || 0) + 1;
+html += `
+<div class="history-item">
+<span class="history-week">Week ${h.week}, ${h.year}</span>
+<span class="history-winner">${h.winner} - ${h.score.toFixed(2)}</span>
+</div>
+`;
+});
+const standings = Object.entries(wins).sort((a, b) => b[1] - a[1]);
+html += '<div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--border-color);">';
+html += '<p style="text-align: center; font-weight: 700; color: var(--text-primary); margin-bottom: 10px;">Overall Wins</p>';
+standings.forEach(([name, count]) => {
+html += `<p style="text-align: center; color: var(--text-secondary); font-size: 13px;">${name}: ${count}</p>`;
+});
+html += '</div>';
+historyContent.innerHTML = html;
+}
+
+function updateLeaderboard() {
+let carlTotal = 0, matTotal = 0, phillTotal = 0;
+['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
+const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
+carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
+matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
+phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
+});
+const scores = [
+{ name: 'Carl', id: 'carl', total: carlTotal },
+{ name: 'Mat', id: 'mat', total: matTotal },
+{ name: 'Phill', id: 'phill', total: phillTotal }
+];
+scores.sort((a, b) => b.total - a.total);
+const container = document.getElementById('totals-container');
+container.innerHTML = '';
+scores.forEach((s, i) => {
+const card = document.createElement('div');
+card.className = 'total-card';
+card.id = `total-card-${s.id}`;
+if (i === 0) {
+card.classList.add('first-place');
+const crown = document.createElement('div');
+crown.className = 'crown';
+crown.textContent = '👑';
+card.appendChild(crown);
+} else if (i === 1) {
+card.classList.add('second-place');
+} else {
+card.classList.add('third-place');
+}
+card.innerHTML += `
+<span class="total-name">${s.name}</span>
+<span class="total-value" id="${s.id}-total">${s.total.toFixed(2)}</span>
+`;
+container.appendChild(card);
+});
+}
+
+function initializeMysteryMultiplier(weekKey) {
+if (!data[weekKey].mysteryDay || data[weekKey].mysteryDay === '') {
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+const randomDay = days[Math.floor(Math.random() * days.length)];
+const multipliers = [2, 3, 4];
+const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
+data[weekKey].mysteryDay = randomDay;
+data[weekKey].mysteryMultiplier = randomMultiplier;
+data[weekKey].mysteryRevealed = false;
+saveToFirebase();
+}
+}
+
+function checkMysteryReveal(day) {
+const weekKey = `week${currentWeek}`;
+if (!data[weekKey].mysteryDay) return;
+if (day === data[weekKey].mysteryDay && !data[weekKey].mysteryRevealed) {
+const dayData = data[weekKey][day];
+const carlWordle = dayData.carl.wordle;
+const matWordle = dayData.mat.wordle;
+const phillWordle = dayData.phill.wordle;
+if (carlWordle && carlWordle !== '' && matWordle && matWordle !== '' && phillWordle && phillWordle !== '') {
+data[weekKey].mysteryRevealed = true;
+saveToFirebase();
+showMysteryReveal();
+launchConfetti();
+}
+}
+}
+
+function showMysteryReveal() {
+const weekKey = `week${currentWeek}`;
+const multiplier = data[weekKey].mysteryMultiplier;
+document.getElementById('mysteryMultiplierText').textContent = `x${multiplier}`;
+document.getElementById('mysteryRevealed').style.display = 'block';
+setTimeout(() => {
+document.getElementById('mysteryRevealed').style.display = 'none';
+}, 5000);
+}
+
+function updateMysteryBanner() {
+const weekKey = `week${currentWeek}`;
+const mysteryBanner = document.getElementById('mysteryBanner');
+if (data[weekKey] && data[weekKey].mysteryDay && !data[weekKey].mysteryRevealed) {
+mysteryBanner.classList.add('active');
+} else {
+mysteryBanner.classList.remove('active');
+}
+}
+
+function getDayOfWeekIndex(dayName) {
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+return days.indexOf(dayName);
+}
+
+function getCurrentDayOfWeek() {
+const today = new Date().getDay();
+let currentDayIndex = today - 1;
+if (currentDayIndex < 0 || currentDayIndex > 4) {
+return -1;
+}
+return currentDayIndex;
+}
+
+function canEnterDataForDay(dayName) {
+const thisWeek = getCurrentWeekNumber();
+const thisYear = new Date().getFullYear();
+if (currentYear < thisYear || (currentYear === thisYear && currentWeek < thisWeek)) {
+return true;
+}
+if (currentYear > thisYear || (currentYear === thisYear && currentWeek > thisWeek)) {
+return false;
+}
+const currentDayIndex = getCurrentDayOfWeek();
+const targetDayIndex = getDayOfWeekIndex(dayName);
+if (currentDayIndex === -1) {
+return true;
+}
+return targetDayIndex <= currentDayIndex;
+}
+
+const defaultData = {
+Monday: { 
+carl: { wordle: '', nags: '', horseSelection: '' }, 
+mat: { wordle: '', nags: '', horseSelection: '' }, 
+phill: { wordle: '', nags: '', horseSelection: '' } 
+},
+Tuesday: { 
+carl: { wordle: '', nags: '', horseSelection: '' }, 
+mat: { wordle: '', nags: '', horseSelection: '' }, 
+phill: { wordle: '', nags: '', horseSelection: '' } 
+},
+Wednesday: {
+carl: { wordle: '', nags: '', horseSelection: '' },
+mat: { wordle: '', nags: '', horseSelection: '' },
+phill: { wordle: '', nags: '', horseSelection: '' },
+word: '',
+meetingTime: '',
+meetingDetails: ''
+},
+Thursday: { 
+carl: { wordle: '', nags: '', horseSelection: '' }, 
+mat: { wordle: '', nags: '', horseSelection: '' }, 
+phill: { wordle: '', nags: '', horseSelection: '' } 
+},
+Friday: { 
+carl: { wordle: '', nags: '', horseSelection: '' }, 
+mat: { wordle: '', nags: '', horseSelection: '' }, 
+phill: { wordle: '', nags: '', horseSelection: '' } 
+},
+mysteryDay: '',
+mysteryMultiplier: 0,
+mysteryRevealed: false
+};
+
+let data = {};
+let isUpdatingFromFirebase = false;
+
+dataRef.on('value', (snapshot) => {
+const firebaseData = snapshot.val();
+if (firebaseData) {
+isUpdatingFromFirebase = true;
+data = firebaseData;
+loadWeekData();
+updateHistory();
+checkBadges();
+isUpdatingFromFirebase = false;
+updateSyncStatus('✓ Synced');
+} else {
+data = { [`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)) };
+dataRef.set(data);
+}
+});
+
+function loadWeekData() {
+if (!data[`week${currentWeek}`]) {
+data[`week${currentWeek}`] = JSON.parse(JSON.stringify(defaultData));
+}
+initializeMysteryMultiplier(`week${currentWeek}`);
+loadDayData();
+}
+
+function updateSyncStatus(message) {
+const status = document.getElementById('syncStatus');
+status.textContent = message;
+if (message.includes('✓')) {
+status.style.color = '#10b981';
+setTimeout(() => {
+status.textContent = '';
+}, 2000);
+}
+}
+
+function saveToFirebase() {
+if (!isUpdatingFromFirebase) {
+dataRef.set(data).then(() => {
+updateSyncStatus('✓ Synced to cloud');
+}).catch((error) => {
+updateSyncStatus('⚠️ Sync error');
+console.error('Firebase save error:', error);
+});
+}
+}
+
+function saveWednesdayData() {
+const weekKey = `week${currentWeek}`;
+if (!data[weekKey].Wednesday.word) data[weekKey].Wednesday.word = '';
+if (!data[weekKey].Wednesday.meetingTime) data[weekKey].Wednesday.meetingTime = '';
+if (!data[weekKey].Wednesday.meetingDetails) data[weekKey].Wednesday.meetingDetails = '';
+data[weekKey].Wednesday.word = document.getElementById('wednesday-word').value || '';
+data[weekKey].Wednesday.meetingTime = document.getElementById('wednesday-meeting-time').value || '';
+data[weekKey].Wednesday.meetingDetails = document.getElementById('wednesday-meeting-details').value || '';
+saveToFirebase();
+}
+
+function updateWednesdaySection() {
+const day = document.getElementById('daySelect').value;
+const wednesdaySection = document.getElementById('wednesdaySection');
+const weekKey = `week${currentWeek}`;
+if (day === 'Wednesday') {
+wednesdaySection.classList.add('active');
+const wedData = data[weekKey]?.Wednesday || defaultData.Wednesday;
+document.getElementById('wednesday-word').value = wedData.word || '';
+document.getElementById('wednesday-meeting-time').value = wedData.meetingTime || '';
+document.getElementById('wednesday-meeting-details').value = wedData.meetingDetails || '';
+} else {
+wednesdaySection.classList.remove('active');
+}
+}
+
+function fractionToDecimal(input) {
+if (!input || input === '' || input === '0') return 0;
+input = input.toString().trim();
+if (!isNaN(input)) {
+return parseFloat(input);
+}
+const wholeAndFraction = input.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+if (wholeAndFraction) {
+const whole = parseInt(wholeAndFraction[1]);
+const numerator = parseInt(wholeAndFraction[2]);
+const denominator = parseInt(wholeAndFraction[3]);
+return whole + (numerator / denominator);
+}
+const justFraction = input.match(/^(\d+)\/(\d+)$/);
+if (justFraction) {
+const numerator = parseInt(justFraction[1]);
+const denominator = parseInt(justFraction[2]);
+return numerator / denominator;
+}
+return 0;
+}
+
+function handleWordleInput(person) {
+const value = document.getElementById(`${person}-wordle`).value;
+if (value === '1') {
+launchConfetti();
+}
+calculateTotals();
+}
+
+function checkFridayCompletion() {
+const day = document.getElementById('daySelect').value;
+const weekKey = `week${currentWeek}`;
+if (day === 'Friday') {
+const fridayData = data[weekKey]?.Friday || defaultData.Friday;
+const carlWordle = fridayData.carl.wordle;
+const matWordle = fridayData.mat.wordle;
+const phillWordle = fridayData.phill.wordle;
+if (carlWordle !== '' && matWordle !== '' && phillWordle !== '') {
+launchConfetti();
+}
+}
+}
+
+function updateNagsDecimal(person) {
+const input = document.getElementById(`${person}-nags`).value;
+const decimal = fractionToDecimal(input);
+const displayElement = document.getElementById(`${person}-nags-decimal`);
+if (input && input !== '' && input !== '0') {
+displayElement.textContent = `= ${decimal.toFixed(2)}`;
+} else {
+displayElement.textContent = '';
+}
+if (decimal >= 5.0 && decimal > lastNagsValues[person]) {
+launchHorseCelebration();
+}
+lastNagsValues[person] = decimal;
+calculateTotals();
+}
+
+function showSaveIndicator() {
+const indicator = document.getElementById('saveIndicator');
+indicator.textContent = '✓ Saved';
+setTimeout(() => {
+indicator.textContent = '';
+}, 2000);
+}
+
+function calculateDailyTotal(wordle, nags, day) {
+if ((!wordle || wordle === '' || wordle === 0) && (!nags || nags === '' || nags === '0')) {
+return 0;
+}
+const wordleNum = parseFloat(wordle || 0);
+const nagsDecimal = fractionToDecimal(nags);
+let wordleScore = 0;
+if (wordleNum > 0) {
+wordleScore = (wordleNum === 1) ? 10 : (7 - wordleNum);
+}
+const weekKey = `week${currentWeek}`;
+if (data[weekKey] && data[weekKey].mysteryDay === day && data[weekKey].mysteryRevealed) {
+wordleScore = wordleScore * data[weekKey].mysteryMultiplier;
+}
+const nagsScore = (nagsDecimal === 0) ? 0 : (nagsDecimal + 1);
+let total = wordleScore + nagsScore;
+if (day === 'Friday') {
+total = total * 2;
+}
+return total;
+}
+
+function updateFridayBanner() {
+const day = document.getElementById('daySelect').value;
+const banner = document.getElementById('fridayBanner');
+const dailyTotals = document.querySelectorAll('.person-daily-total');
+if (day === 'Friday') {
+banner.classList.add('active');
+dailyTotals.forEach(total => total.classList.add('friday-bonus'));
+} else {
+banner.classList.remove('active');
+dailyTotals.forEach(total => total.classList.remove('friday-bonus'));
+}
+}
+
+function loadDayData() {
+const day = document.getElementById('daySelect').value;
+const weekKey = `week${currentWeek}`;
+const dayData = data[weekKey]?.[day] || defaultData[day];
+updateFridayBanner();
+updateWednesdaySection();
+updateFinishButton();
+updateMysteryBanner();
+const canEdit = canEnterDataForDay(day);
+if (data[weekKey] && data[weekKey].mysteryDay === day && data[weekKey].mysteryRevealed) {
+const multiplier = data[weekKey].mysteryMultiplier;
+document.getElementById('mysteryMultiplierText').textContent = `x${multiplier}`;
+document.getElementById('mysteryRevealed').style.display = 'block';
+} else {
+document.getElementById('mysteryRevealed').style.display = 'none';
+}
+document.getElementById('carl-wordle').value = dayData.carl.wordle || '';
+document.getElementById('carl-wordle').disabled = !canEdit;
+document.getElementById('carl-horse-selection').value = dayData.carl.horseSelection || '';
+document.getElementById('carl-horse-selection').disabled = !canEdit;
+document.getElementById('carl-nags').value = dayData.carl.nags || '';
+document.getElementById('carl-nags').disabled = !canEdit;
+lastNagsValues.carl = fractionToDecimal(dayData.carl.nags);
+updateNagsDecimal('carl');
+document.getElementById('mat-wordle').value = dayData.mat.wordle || '';
+document.getElementById('mat-wordle').disabled = !canEdit;
+document.getElementById('mat-horse-selection').value = dayData.mat.horseSelection || '';
+document.getElementById('mat-horse-selection').disabled = !canEdit;
+document.getElementById('mat-nags').value = dayData.mat.nags || '';
+document.getElementById('mat-nags').disabled = !canEdit;
+lastNagsValues.mat = fractionToDecimal(dayData.mat.nags);
+updateNagsDecimal('mat');
+document.getElementById('phill-wordle').value = dayData.phill.wordle || '';
+document.getElementById('phill-wordle').disabled = !canEdit;
+document.getElementById('phill-horse-selection').value = dayData.phill.horseSelection || '';
+document.getElementById('phill-horse-selection').disabled = !canEdit;
+document.getElementById('phill-nags').value = dayData.phill.nags || '';
+document.getElementById('phill-nags').disabled = !canEdit;
+lastNagsValues.phill = fractionToDecimal(dayData.phill.nags);
+updateNagsDecimal('phill');
+calculateTotals();
+}
+
+function saveDayData() {
+const day = document.getElementById('daySelect').value;
+const weekKey = `week${currentWeek}`;
+if (!data[weekKey]) {
+data[weekKey] = JSON.parse(JSON.stringify(defaultData));
+}
+if (day === 'Wednesday') {
+data[weekKey][day] = {
+carl: {
+wordle: document.getElementById('carl-wordle').value || '',
+nags: document.getElementById('carl-nags').value || '',
+horseSelection: document.getElementById('carl-horse-selection').value || ''
+},
+mat: {
+wordle: document.getElementById('mat-wordle').value || '',
+nags: document.getElementById('mat-nags').value || '',
+horseSelection: document.getElementById('mat-horse-selection').value || ''
+},
+phill: {
+wordle: document.getElementById('phill-wordle').value || '',
+nags: document.getElementById('phill-nags').value || '',
+horseSelection: document.getElementById('phill-horse-selection').value || ''
+},
+word: data[weekKey].Wednesday?.word || '',
+meetingTime: data[weekKey].Wednesday?.meetingTime || '',
+meetingDetails: data[weekKey].Wednesday?.meetingDetails || ''
+};
+} else {
+data[weekKey][day] = {
+carl: {
+wordle: document.getElementById('carl-wordle').value || '',
+nags: document.getElementById('carl-nags').value || '',
+horseSelection: document.getElementById('carl-horse-selection').value || ''
+},
+mat: {
+wordle: document.getElementById('mat-wordle').value || '',
+nags: document.getElementById('mat-nags').value || '',
+horseSelection: document.getElementById('mat-horse-selection').value || ''
+},
+phill: {
+wordle: document.getElementById('phill-wordle').value || '',
+nags: document.getElementById('phill-nags').value || '',
+horseSelection: document.getElementById('phill-horse-selection').value || ''
+}
+};
+}
+saveToFirebase();
+checkFridayCompletion();
+}
+
+function calculateTotals() {
+saveDayData();
+const day = document.getElementById('daySelect').value;
+const weekKey = `week${currentWeek}`;
+const dayData = data[weekKey]?.[day] || defaultData[day];
+const carlDaily = calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, day);
+const matDaily = calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, day);
+const phillDaily = calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, day);
+document.getElementById('carl-daily').textContent = carlDaily.toFixed(2);
+document.getElementById('mat-daily').textContent = matDaily.toFixed(2);
+document.getElementById('phill-daily').textContent = phillDaily.toFixed(2);
+checkMysteryReveal(day);
+updateLeaderboard();
+}
+
+window.onload = function() {
+updateSyncStatus('🔄 Loading...');
+updateWeekDisplay();
+const today = new Date().getDay();
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+let currentDayIndex = today - 1;
+if (currentDayIndex < 0 || currentDayIndex > 4) {
+currentDayIndex = 0;
+}
+document.getElementById('daySelect').value = days[currentDayIndex];
+loadDayData();
+};
+</script>
 </body>
 </html>
-
