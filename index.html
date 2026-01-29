@@ -1711,12 +1711,12 @@ let carlWordleGood = 0, matWordleGood = 0, phillWordleGood = 0;
 let carlNagsWins = 0, matNagsWins = 0, phillNagsWins = 0;
 ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
 const dayData = weekData[day] || defaultData[day];
-if (dayData.carl.wordle && parseInt(dayData.carl.wordle) <= 3) carlWordleGood++;
-if (dayData.mat.wordle && parseInt(dayData.mat.wordle) <= 3) matWordleGood++;
-if (dayData.phill.wordle && parseInt(dayData.phill.wordle) <= 3) phillWordleGood++;
-const carlNags = fractionToDecimal(dayData.carl.nags);
-const matNags = fractionToDecimal(dayData.mat.nags);
-const phillNags = fractionToDecimal(dayData.phill.nags);
+if (dayData.carl && dayData.carl.wordle && parseInt(dayData.carl.wordle) <= 3) carlWordleGood++;
+if (dayData.mat && dayData.mat.wordle && parseInt(dayData.mat.wordle) <= 3) matWordleGood++;
+if (dayData.phill && dayData.phill.wordle && parseInt(dayData.phill.wordle) <= 3) phillWordleGood++;
+const carlNags = fractionToDecimal(dayData.carl?.nags);
+const matNags = fractionToDecimal(dayData.mat?.nags);
+const phillNags = fractionToDecimal(dayData.phill?.nags);
 if (carlNags >= 5) carlNagsWins++;
 if (matNags >= 5) matNagsWins++;
 if (phillNags >= 5) phillNagsWins++;
@@ -1763,9 +1763,9 @@ function updateLeaderboard() {
 let carlTotal = 0, matTotal = 0, phillTotal = 0;
 ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(d => {
 const dayData = data[`week${currentWeek}`]?.[d] || defaultData[d];
-carlTotal += calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, d);
-matTotal += calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, d);
-phillTotal += calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, d);
+carlTotal += calculateDailyTotal(dayData.carl?.wordle, dayData.carl?.nags, d);
+matTotal += calculateDailyTotal(dayData.mat?.wordle, dayData.mat?.nags, d);
+phillTotal += calculateDailyTotal(dayData.phill?.wordle, dayData.phill?.nags, d);
 });
 const scores = [
 { name: 'Carl', id: 'carl', total: carlTotal },
@@ -1798,27 +1798,15 @@ container.appendChild(card);
 });
 }
 
-function initializeMysteryMultiplier(weekKey) {
-if (!data[weekKey].mysteryDay || data[weekKey].mysteryDay === '') {
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-const randomDay = days[Math.floor(Math.random() * days.length)];
-const multipliers = [2, 3, 4];
-const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
-data[weekKey].mysteryDay = randomDay;
-data[weekKey].mysteryMultiplier = randomMultiplier;
-data[weekKey].mysteryRevealed = false;
-saveToFirebase();
-}
-}
-
 function checkMysteryReveal(day) {
 const weekKey = `week${currentWeek}`;
-if (!data[weekKey].mysteryDay) return;
+if (!data[weekKey] || !data[weekKey].mysteryDay) return;
 if (day === data[weekKey].mysteryDay && !data[weekKey].mysteryRevealed) {
 const dayData = data[weekKey][day];
-const carlWordle = dayData.carl.wordle;
-const matWordle = dayData.mat.wordle;
-const phillWordle = dayData.phill.wordle;
+if (!dayData) return;
+const carlWordle = dayData.carl?.wordle;
+const matWordle = dayData.mat?.wordle;
+const phillWordle = dayData.phill?.wordle;
 if (carlWordle && carlWordle !== '' && matWordle && matWordle !== '' && phillWordle && phillWordle !== '') {
 data[weekKey].mysteryRevealed = true;
 saveToFirebase();
@@ -1933,10 +1921,26 @@ dataRef.set(data);
 });
 
 function loadWeekData() {
-if (!data[`week${currentWeek}`]) {
-data[`week${currentWeek}`] = JSON.parse(JSON.stringify(defaultData));
+const weekKey = `week${currentWeek}`;
+if (!data[weekKey]) {
+data[weekKey] = JSON.parse(JSON.stringify(defaultData));
 }
-initializeMysteryMultiplier(`week${currentWeek}`);
+if (!data[weekKey].mysteryDay || data[weekKey].mysteryDay === '') {
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+const randomDay = days[Math.floor(Math.random() * days.length)];
+const multipliers = [2, 3, 4];
+const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
+data[weekKey].mysteryDay = randomDay;
+data[weekKey].mysteryMultiplier = randomMultiplier;
+data[weekKey].mysteryRevealed = false;
+saveToFirebase();
+}
+if (data[weekKey].mysteryMultiplier === undefined) {
+data[weekKey].mysteryMultiplier = 0;
+}
+if (data[weekKey].mysteryRevealed === undefined) {
+data[weekKey].mysteryRevealed = false;
+}
 loadDayData();
 }
 
@@ -1964,12 +1968,18 @@ console.error('Firebase save error:', error);
 
 function saveWednesdayData() {
 const weekKey = `week${currentWeek}`;
+const mysteryDay = data[weekKey].mysteryDay || '';
+const mysteryMultiplier = data[weekKey].mysteryMultiplier || 0;
+const mysteryRevealed = data[weekKey].mysteryRevealed || false;
 if (!data[weekKey].Wednesday.word) data[weekKey].Wednesday.word = '';
 if (!data[weekKey].Wednesday.meetingTime) data[weekKey].Wednesday.meetingTime = '';
 if (!data[weekKey].Wednesday.meetingDetails) data[weekKey].Wednesday.meetingDetails = '';
 data[weekKey].Wednesday.word = document.getElementById('wednesday-word').value || '';
 data[weekKey].Wednesday.meetingTime = document.getElementById('wednesday-meeting-time').value || '';
 data[weekKey].Wednesday.meetingDetails = document.getElementById('wednesday-meeting-details').value || '';
+data[weekKey].mysteryDay = mysteryDay;
+data[weekKey].mysteryMultiplier = mysteryMultiplier;
+data[weekKey].mysteryRevealed = mysteryRevealed;
 saveToFirebase();
 }
 
@@ -2023,9 +2033,9 @@ const day = document.getElementById('daySelect').value;
 const weekKey = `week${currentWeek}`;
 if (day === 'Friday') {
 const fridayData = data[weekKey]?.Friday || defaultData.Friday;
-const carlWordle = fridayData.carl.wordle;
-const matWordle = fridayData.mat.wordle;
-const phillWordle = fridayData.phill.wordle;
+const carlWordle = fridayData.carl?.wordle;
+const matWordle = fridayData.mat?.wordle;
+const phillWordle = fridayData.phill?.wordle;
 if (carlWordle !== '' && matWordle !== '' && phillWordle !== '') {
 launchConfetti();
 }
@@ -2107,29 +2117,29 @@ document.getElementById('mysteryRevealed').style.display = 'block';
 } else {
 document.getElementById('mysteryRevealed').style.display = 'none';
 }
-document.getElementById('carl-wordle').value = dayData.carl.wordle || '';
+document.getElementById('carl-wordle').value = dayData.carl?.wordle || '';
 document.getElementById('carl-wordle').disabled = !canEdit;
-document.getElementById('carl-horse-selection').value = dayData.carl.horseSelection || '';
+document.getElementById('carl-horse-selection').value = dayData.carl?.horseSelection || '';
 document.getElementById('carl-horse-selection').disabled = !canEdit;
-document.getElementById('carl-nags').value = dayData.carl.nags || '';
+document.getElementById('carl-nags').value = dayData.carl?.nags || '';
 document.getElementById('carl-nags').disabled = !canEdit;
-lastNagsValues.carl = fractionToDecimal(dayData.carl.nags);
+lastNagsValues.carl = fractionToDecimal(dayData.carl?.nags);
 updateNagsDecimal('carl');
-document.getElementById('mat-wordle').value = dayData.mat.wordle || '';
+document.getElementById('mat-wordle').value = dayData.mat?.wordle || '';
 document.getElementById('mat-wordle').disabled = !canEdit;
-document.getElementById('mat-horse-selection').value = dayData.mat.horseSelection || '';
+document.getElementById('mat-horse-selection').value = dayData.mat?.horseSelection || '';
 document.getElementById('mat-horse-selection').disabled = !canEdit;
-document.getElementById('mat-nags').value = dayData.mat.nags || '';
+document.getElementById('mat-nags').value = dayData.mat?.nags || '';
 document.getElementById('mat-nags').disabled = !canEdit;
-lastNagsValues.mat = fractionToDecimal(dayData.mat.nags);
+lastNagsValues.mat = fractionToDecimal(dayData.mat?.nags);
 updateNagsDecimal('mat');
-document.getElementById('phill-wordle').value = dayData.phill.wordle || '';
+document.getElementById('phill-wordle').value = dayData.phill?.wordle || '';
 document.getElementById('phill-wordle').disabled = !canEdit;
-document.getElementById('phill-horse-selection').value = dayData.phill.horseSelection || '';
+document.getElementById('phill-horse-selection').value = dayData.phill?.horseSelection || '';
 document.getElementById('phill-horse-selection').disabled = !canEdit;
-document.getElementById('phill-nags').value = dayData.phill.nags || '';
+document.getElementById('phill-nags').value = dayData.phill?.nags || '';
 document.getElementById('phill-nags').disabled = !canEdit;
-lastNagsValues.phill = fractionToDecimal(dayData.phill.nags);
+lastNagsValues.phill = fractionToDecimal(dayData.phill?.nags);
 updateNagsDecimal('phill');
 calculateTotals();
 }
@@ -2140,6 +2150,9 @@ const weekKey = `week${currentWeek}`;
 if (!data[weekKey]) {
 data[weekKey] = JSON.parse(JSON.stringify(defaultData));
 }
+const mysteryDay = data[weekKey].mysteryDay || '';
+const mysteryMultiplier = data[weekKey].mysteryMultiplier || 0;
+const mysteryRevealed = data[weekKey].mysteryRevealed || false;
 if (day === 'Wednesday') {
 data[weekKey][day] = {
 carl: {
@@ -2180,6 +2193,9 @@ horseSelection: document.getElementById('phill-horse-selection').value || ''
 }
 };
 }
+data[weekKey].mysteryDay = mysteryDay;
+data[weekKey].mysteryMultiplier = mysteryMultiplier;
+data[weekKey].mysteryRevealed = mysteryRevealed;
 saveToFirebase();
 checkFridayCompletion();
 }
@@ -2189,9 +2205,9 @@ saveDayData();
 const day = document.getElementById('daySelect').value;
 const weekKey = `week${currentWeek}`;
 const dayData = data[weekKey]?.[day] || defaultData[day];
-const carlDaily = calculateDailyTotal(dayData.carl.wordle, dayData.carl.nags, day);
-const matDaily = calculateDailyTotal(dayData.mat.wordle, dayData.mat.nags, day);
-const phillDaily = calculateDailyTotal(dayData.phill.wordle, dayData.phill.nags, day);
+const carlDaily = calculateDailyTotal(dayData.carl?.wordle, dayData.carl?.nags, day);
+const matDaily = calculateDailyTotal(dayData.mat?.wordle, dayData.mat?.nags, day);
+const phillDaily = calculateDailyTotal(dayData.phill?.wordle, dayData.phill?.nags, day);
 document.getElementById('carl-daily').textContent = carlDaily.toFixed(2);
 document.getElementById('mat-daily').textContent = matDaily.toFixed(2);
 document.getElementById('phill-daily').textContent = phillDaily.toFixed(2);
