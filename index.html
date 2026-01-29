@@ -1157,7 +1157,7 @@ data = {
 history: {}
 };
 lastNagsValues = { carl: 0, mat: 0, phill: 0 };
-saveToFirebase();
+dataRef.set(data);
 loadDayData();
 updateHistory();
 const notification = document.createElement('div');
@@ -1643,7 +1643,7 @@ score: winner.score,
 year: currentYear,
 week: currentWeek
 };
-saveToFirebase();
+dataRef.update({ history: data.history });
 updateHistory();
 }
 banner.classList.add('show');
@@ -1810,7 +1810,9 @@ const matWordle = dayData.mat?.wordle;
 const phillWordle = dayData.phill?.wordle;
 if (carlWordle && carlWordle !== '' && matWordle && matWordle !== '' && phillWordle && phillWordle !== '') {
 data[weekKey].mysteryRevealed = true;
-saveToFirebase();
+const updates = {};
+updates[`${weekKey}/mysteryRevealed`] = true;
+dataRef.update(updates);
 showMysteryReveal();
 launchConfetti();
 }
@@ -1904,48 +1906,22 @@ mysteryRevealed: false
 
 let data = {};
 let isUpdatingFromFirebase = false;
-let needsMysteryInit = false;
 
 dataRef.on('value', (snapshot) => {
 const firebaseData = snapshot.val();
 if (firebaseData) {
 isUpdatingFromFirebase = true;
 data = firebaseData;
-const weekKey = `week${currentWeek}`;
-if (!data[weekKey]) {
-data[weekKey] = JSON.parse(JSON.stringify(defaultData));
-}
-if (!data[weekKey].mysteryDay || data[weekKey].mysteryDay === '') {
-needsMysteryInit = true;
-}
-loadDayData();
+loadWeekData();
 updateHistory();
 checkBadges();
 isUpdatingFromFirebase = false;
 updateSyncStatus('✓ Synced');
-if (needsMysteryInit) {
-needsMysteryInit = false;
-initializeMysteryForWeek(weekKey);
-}
 } else {
 data = { [`week${currentWeek}`]: JSON.parse(JSON.stringify(defaultData)) };
 dataRef.set(data);
 }
 });
-
-function initializeMysteryForWeek(weekKey) {
-if (!data[weekKey].mysteryDay || data[weekKey].mysteryDay === '') {
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-const randomDay = days[Math.floor(Math.random() * days.length)];
-const multipliers = [2, 3, 4];
-const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
-data[weekKey].mysteryDay = randomDay;
-data[weekKey].mysteryMultiplier = randomMultiplier;
-data[weekKey].mysteryRevealed = false;
-saveToFirebase();
-updateMysteryBanner();
-}
-}
 
 function loadWeekData() {
 const weekKey = `week${currentWeek}`;
@@ -1961,7 +1937,11 @@ data[weekKey].mysteryDay = randomDay;
 data[weekKey].mysteryMultiplier = randomMultiplier;
 data[weekKey].mysteryRevealed = false;
 if (!isUpdatingFromFirebase) {
-saveToFirebase();
+const updates = {};
+updates[`${weekKey}/mysteryDay`] = randomDay;
+updates[`${weekKey}/mysteryMultiplier`] = randomMultiplier;
+updates[`${weekKey}/mysteryRevealed`] = false;
+dataRef.update(updates);
 }
 }
 if (data[weekKey].mysteryMultiplier === undefined) {
@@ -1997,22 +1977,19 @@ console.error('Firebase save error:', error);
 
 function saveWednesdayData() {
 const weekKey = `week${currentWeek}`;
-const mysteryDay = data[weekKey].mysteryDay || '';
-const mysteryMultiplier = data[weekKey].mysteryMultiplier || 0;
-const mysteryRevealed = data[weekKey].mysteryRevealed || false;
 if (!data[weekKey].Wednesday) {
 data[weekKey].Wednesday = JSON.parse(JSON.stringify(defaultData.Wednesday));
 }
-if (!data[weekKey].Wednesday.word) data[weekKey].Wednesday.word = '';
-if (!data[weekKey].Wednesday.meetingTime) data[weekKey].Wednesday.meetingTime = '';
-if (!data[weekKey].Wednesday.meetingDetails) data[weekKey].Wednesday.meetingDetails = '';
-data[weekKey].Wednesday.word = document.getElementById('wednesday-word').value || '';
-data[weekKey].Wednesday.meetingTime = document.getElementById('wednesday-meeting-time').value || '';
-data[weekKey].Wednesday.meetingDetails = document.getElementById('wednesday-meeting-details').value || '';
-data[weekKey].mysteryDay = mysteryDay;
-data[weekKey].mysteryMultiplier = mysteryMultiplier;
-data[weekKey].mysteryRevealed = mysteryRevealed;
-saveToFirebase();
+const updates = {};
+updates[`${weekKey}/Wednesday/word`] = document.getElementById('wednesday-word').value || '';
+updates[`${weekKey}/Wednesday/meetingTime`] = document.getElementById('wednesday-meeting-time').value || '';
+updates[`${weekKey}/Wednesday/meetingDetails`] = document.getElementById('wednesday-meeting-details').value || '';
+data[weekKey].Wednesday.word = updates[`${weekKey}/Wednesday/word`];
+data[weekKey].Wednesday.meetingTime = updates[`${weekKey}/Wednesday/meetingTime`];
+data[weekKey].Wednesday.meetingDetails = updates[`${weekKey}/Wednesday/meetingDetails`];
+if (!isUpdatingFromFirebase) {
+dataRef.update(updates);
+}
 }
 
 function updateWednesdaySection() {
@@ -2173,72 +2150,51 @@ document.getElementById('phill-nags').value = dayData.phill?.nags || '';
 document.getElementById('phill-nags').disabled = !canEdit;
 lastNagsValues.phill = fractionToDecimal(dayData.phill?.nags);
 updateNagsDecimal('phill');
-calculateTotals();
+updateTotalsDisplay();
 }
 
 function saveDayData() {
+if (isUpdatingFromFirebase) return;
 const day = document.getElementById('daySelect').value;
 const weekKey = `week${currentWeek}`;
 if (!data[weekKey]) {
 data[weekKey] = JSON.parse(JSON.stringify(defaultData));
 }
-const mysteryDay = data[weekKey].mysteryDay || '';
-const mysteryMultiplier = data[weekKey].mysteryMultiplier || 0;
-const mysteryRevealed = data[weekKey].mysteryRevealed || false;
-const existingHistory = data.history || {};
+const dayDataToSave = {
+carl: {
+wordle: document.getElementById('carl-wordle').value || '',
+nags: document.getElementById('carl-nags').value || '',
+horseSelection: document.getElementById('carl-horse-selection').value || ''
+},
+mat: {
+wordle: document.getElementById('mat-wordle').value || '',
+nags: document.getElementById('mat-nags').value || '',
+horseSelection: document.getElementById('mat-horse-selection').value || ''
+},
+phill: {
+wordle: document.getElementById('phill-wordle').value || '',
+nags: document.getElementById('phill-nags').value || '',
+horseSelection: document.getElementById('phill-horse-selection').value || ''
+}
+};
 if (day === 'Wednesday') {
-const existingWedWord = data[weekKey].Wednesday?.word || '';
-const existingWedTime = data[weekKey].Wednesday?.meetingTime || '';
-const existingWedDetails = data[weekKey].Wednesday?.meetingDetails || '';
-data[weekKey][day] = {
-carl: {
-wordle: document.getElementById('carl-wordle').value || '',
-nags: document.getElementById('carl-nags').value || '',
-horseSelection: document.getElementById('carl-horse-selection').value || ''
-},
-mat: {
-wordle: document.getElementById('mat-wordle').value || '',
-nags: document.getElementById('mat-nags').value || '',
-horseSelection: document.getElementById('mat-horse-selection').value || ''
-},
-phill: {
-wordle: document.getElementById('phill-wordle').value || '',
-nags: document.getElementById('phill-nags').value || '',
-horseSelection: document.getElementById('phill-horse-selection').value || ''
-},
-word: existingWedWord,
-meetingTime: existingWedTime,
-meetingDetails: existingWedDetails
-};
-} else {
-data[weekKey][day] = {
-carl: {
-wordle: document.getElementById('carl-wordle').value || '',
-nags: document.getElementById('carl-nags').value || '',
-horseSelection: document.getElementById('carl-horse-selection').value || ''
-},
-mat: {
-wordle: document.getElementById('mat-wordle').value || '',
-nags: document.getElementById('mat-nags').value || '',
-horseSelection: document.getElementById('mat-horse-selection').value || ''
-},
-phill: {
-wordle: document.getElementById('phill-wordle').value || '',
-nags: document.getElementById('phill-nags').value || '',
-horseSelection: document.getElementById('phill-horse-selection').value || ''
+dayDataToSave.word = data[weekKey].Wednesday?.word || '';
+dayDataToSave.meetingTime = data[weekKey].Wednesday?.meetingTime || '';
+dayDataToSave.meetingDetails = data[weekKey].Wednesday?.meetingDetails || '';
 }
-};
-}
-data[weekKey].mysteryDay = mysteryDay;
-data[weekKey].mysteryMultiplier = mysteryMultiplier;
-data[weekKey].mysteryRevealed = mysteryRevealed;
-data.history = existingHistory;
-saveToFirebase();
+data[weekKey][day] = dayDataToSave;
+const updates = {};
+updates[`${weekKey}/${day}`] = dayDataToSave;
+dataRef.update(updates).then(() => {
+updateSyncStatus('✓ Synced to cloud');
+}).catch((error) => {
+updateSyncStatus('⚠️ Sync error');
+console.error('Firebase save error:', error);
+});
 checkFridayCompletion();
 }
 
-function calculateTotals() {
-saveDayData();
+function updateTotalsDisplay() {
 const day = document.getElementById('daySelect').value;
 const weekKey = `week${currentWeek}`;
 const dayData = data[weekKey]?.[day] || defaultData[day];
@@ -2250,6 +2206,10 @@ document.getElementById('mat-daily').textContent = matDaily.toFixed(2);
 document.getElementById('phill-daily').textContent = phillDaily.toFixed(2);
 checkMysteryReveal(day);
 updateLeaderboard();
+}
+
+function calculateTotals() {
+saveDayData();
 }
 
 window.onload = function() {
@@ -2264,7 +2224,5 @@ currentDayIndex = 0;
 document.getElementById('daySelect').value = days[currentDayIndex];
 };
 </script>
-
 </body>
 </html>
-
